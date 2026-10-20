@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- Site Ledger - Demo & Mock Data Seed Script
 -- Realistic Pakistani residential construction projects, staff floats,
 -- payments, milestones, payables, and daily expenses.
@@ -154,5 +154,28 @@ INSERT INTO public.cash_issuances (
 ) VALUES
 ('a0000000-0000-0000-0000-000000000002', null, '2026-10-01', 100000, 'client_funds', 'cash', 'Initial October site float handed over in cash', false, 'a0000000-0000-0000-0000-000000000001'),
 ('a0000000-0000-0000-0000-000000000002', null, '2026-10-15', 150000, 'client_funds', 'bank_transfer', 'Top-up float transfer via Easypaisa for labour dihari and hardware', false, 'a0000000-0000-0000-0000-000000000001'),
-('a0000000-0000-0000-0000-000000000003', null, '2026-10-10', 50000, 'client_funds', 'cash', 'Petty cash for site supplies and tanker water', false, 'a0000000-0000-0000-0000-000000000001')
+('a0000000-0000-0000-0000-000000000003', null, '2026-10-10', 50000, 'client_funds', 'cash', 'Petty cash for site supplies and tanker water', false, 'a0000000-0000-0000-0000-000000000001'),
+('e78000af-a287-4d6e-9d3f-dec7a38f5ce1', 'b0000000-0000-0000-0000-000000000001', '2026-10-05', 200000, 'client_funds', 'cash', 'Initial site float handed over in cash for Ahmed House site setup & groundwork', false, 'a0000000-0000-0000-0000-000000000001'),
+('e78000af-a287-4d6e-9d3f-dec7a38f5ce1', 'b0000000-0000-0000-0000-000000000002', '2026-10-14', 150000, 'client_funds', 'bank_transfer', 'Site float top-up via Bank Al Habib for labour dihari and hardware', false, 'a0000000-0000-0000-0000-000000000001')
+ON CONFLICT DO NOTHING;
+
+-- 7. PROJECT ASSIGNMENTS (HKMR KHAN)
+INSERT INTO public.project_assignments (project_id, user_id, created_by) VALUES
+('b0000000-0000-0000-0000-000000000001', 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1', 'a0000000-0000-0000-0000-000000000001'),
+('b0000000-0000-0000-0000-000000000002', 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1', 'a0000000-0000-0000-0000-000000000001')
+ON CONFLICT DO NOTHING;
+
+-- 8. EXPENSES RECORDED BY HKMR KHAN
+INSERT INTO public.expenses (
+  project_id, expense_name, quantity, unit, rate, amount, expense_date, category, purpose, vendor_id, payment_status, paid_from, paid_via, paid_method, created_by
+) VALUES
+('b0000000-0000-0000-0000-000000000001', 'Dihari Mazdoor - 4 Labourers for Foundation Excavation', 4, 'men', 1800, 7200, '2026-10-06', 'Mazdoor (labour)', 'Manual trench excavation for boundary wall and water tank', null, 'paid', 'client_funds', 'site_float', 'cash', 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1'),
+('b0000000-0000-0000-0000-000000000001', 'Water Tanker (Bowser) - 2 Tankers for Compaction', 2, 'bowsers', 3250, 6500, '2026-10-08', 'Water tanker', 'Water supply for earth ramming and compaction before lean concrete', 'c0000000-0000-0000-0000-000000000003', 'paid', 'client_funds', 'site_float', 'cash', 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1'),
+('b0000000-0000-0000-0000-000000000001', 'Shuttering Oil, Nails & Binding Wire (16 Gauge)', 1, 'lot', 14800, 14800, '2026-10-10', 'Tools', 'Wood shuttering release oil 2 cans, 10kg wire, 5kg steel nails', 'c0000000-0000-0000-0000-000000000005', 'paid', 'client_funds', 'site_float', 'cash', 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1'),
+('b0000000-0000-0000-0000-000000000001', 'Mistri & Mazdoor Dihari - Footing Concrete Pour', 8, 'men', 2750, 22000, '2026-10-12', 'Mistri (mason)', '3 head masons and 5 helper mazdoor for raft foundation concrete pour', null, 'paid', 'client_funds', 'site_float', 'cash', 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1'),
+('b0000000-0000-0000-0000-000000000002', 'uPVC Underground Drainage Pipes (4 inch Class B)', 12, 'lengths', 3200, 38400, '2026-10-15', 'Plumbing', 'Main sewerage line installation from courtyard to inspection chamber', 'c0000000-0000-0000-0000-000000000004', 'paid', 'client_funds', 'site_float', 'cash', 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1'),
+('b0000000-0000-0000-0000-000000000001', 'Site Tea, Refreshment & Ice for Labour (Weekly)', 1, 'week', 8400, 8400, '2026-10-17', 'Site tea & food', 'Daily afternoon tea and bread for site team, drinking water blocks', null, 'paid', 'client_funds', 'site_float', 'cash', 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1'),
+('b0000000-0000-0000-0000-000000000002', 'Emergency Hardware - Level Pipe, Measuring Tape & Trowels', 1, 'set', 4600, 4600, '2026-10-19', 'Tools', 'Water level pipe 50m, 50m fiberglass tape, 4 steel trowels (kandi)', 'c0000000-0000-0000-0000-000000000005', 'paid', 'client_funds', 'site_float', 'cash', 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1'),
+('b0000000-0000-0000-0000-000000000001', 'Daily Wage Labour - Site Cleaning & Column Curing', 2, 'men', 1800, 3600, '2026-10-20', 'Mazdoor (labour)', 'Morning and evening curing of RCC columns and clearing debris', null, 'paid', 'client_funds', 'site_float', 'cash', 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1'),
+('b0000000-0000-0000-0000-000000000002', 'PPRC Hot/Cold Water Pipes & Brass Fittings (Bill Due)', 1, 'lot', 32000, 32000, '2026-10-18', 'Sanitary fittings', 'Internal concealed bathroom water supply pipes delivery', 'c0000000-0000-0000-0000-000000000004', 'unpaid', 'client_funds', 'direct', null, 'e78000af-a287-4d6e-9d3f-dec7a38f5ce1')
 ON CONFLICT DO NOTHING;
