@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -577,7 +577,7 @@ export default function UsersManagementPage() {
                 const isNegative = user.float_balance < 0;
                 return (
                   <tr key={user.id} id={`row-${user.id}`}>
-                    <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{user.serial_no ?? '—'}</td>
+                    <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{user.serial_no ?? '-'}</td>
                     <td>
                       <Link href={`/users/${user.id}`} style={{ fontWeight: 700, color: 'var(--color-navy)' }}>
                         {user.full_name}
@@ -595,7 +595,7 @@ export default function UsersManagementPage() {
                     </td>
                     <td>
                       <span style={{ fontSize: '0.8125rem', fontFamily: 'var(--font-mono)' }}>
-                        {user.phone || user.email || '—'}
+                        {user.phone || user.email || '-'}
                       </span>
                     </td>
                     <td>
@@ -609,7 +609,7 @@ export default function UsersManagementPage() {
                     </td>
                     <td>
                       {user.role === 'admin' ? (
-                        <span className="text-muted" style={{ fontSize: '0.8125rem' }}>— (Admin)</span>
+                        <span className="text-muted" style={{ fontSize: '0.8125rem' }}>- (Admin)</span>
                       ) : (
                         <>
                           <div className={`text-money ${isNegative ? 'text-danger' : 'text-success'}`}>
@@ -623,7 +623,7 @@ export default function UsersManagementPage() {
                     </td>
                     <td>
                       {user.role === 'admin' ? (
-                        <span className="text-faint" style={{ fontSize: '0.75rem' }}>—</span>
+                        <span className="text-faint" style={{ fontSize: '0.75rem' }}>-</span>
                       ) : user.last_issuance_date ? (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.25rem' }}>
                           <div>
@@ -739,7 +739,7 @@ export default function UsersManagementPage() {
             <div className="flex items-center gap-sm">
               <span style={{ fontSize: '1rem' }}>{showDeactivatedSection ? '▼' : '▶'}</span>
               <h3 style={{ fontSize: '0.9375rem', color: 'var(--color-secondary-text)', margin: 0 }}>
-                Deactivated Staff ({deactivatedUsers.length}) — Login Blocked
+                Deactivated Staff ({deactivatedUsers.length}) - Login Blocked
               </h3>
             </div>
             <span className="text-muted" style={{ fontSize: '0.75rem' }}>
@@ -763,10 +763,10 @@ export default function UsersManagementPage() {
                 <tbody>
                   {deactivatedUsers.map((user, idx) => (
                     <tr key={user.id} id={`row-${user.id}`}>
-                      <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{user.serial_no ?? '—'}</td>
+                      <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{user.serial_no ?? '-'}</td>
                       <td style={{ fontWeight: 600 }}>{user.full_name}</td>
                       <td>{user.role}</td>
-                      <td>{user.phone || user.email || '—'}</td>
+                      <td>{user.phone || user.email || '-'}</td>
                       <td>{formatPKR(user.float_balance)}</td>
                       <td style={{ textAlign: 'right' }}>
                         <div className="flex gap-xs justify-end">
@@ -1235,7 +1235,7 @@ export default function UsersManagementPage() {
 
               <div className="form-group">
                 <label className="form-label" htmlFor="issue-proj">
-                  Project (Optional — General float allowed)
+                  Project (Optional - General float allowed)
                 </label>
                 <select
                   id="issue-proj"

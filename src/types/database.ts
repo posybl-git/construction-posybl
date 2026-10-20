@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // TypeScript types for the Android Properties database (PRD §11)
 // ============================================================
 
@@ -65,7 +65,7 @@ export interface Project {
   deleted_by: string | null;
 }
 
-/** The restricted view site managers see — no contract_value, no financial data */
+/** The restricted view site managers see - no contract_value, no financial data */
 export interface ProjectForSite {
   id: string;
   name: string;

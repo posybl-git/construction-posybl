@@ -11,6 +11,18 @@ export default function SettingsHubPage() {
       badge: 'Core Auth',
     },
     {
+      title: '🏷️ Expense Categories',
+      desc: 'Standardize construction expense categories, rename, merge duplicates, and view category usage.',
+      href: '/settings/categories',
+      badge: 'Categories',
+    },
+    {
+      title: '🏢 Vendor & Supplier Directory',
+      desc: 'Manage contractors, suppliers, phone numbers, merge duplicate vendor records, and view total spend.',
+      href: '/settings/vendors',
+      badge: 'Directory',
+    },
+    {
       title: '🗑️ Trash & Data Restore',
       desc: 'View all soft-deleted expenses, payments, milestones, and projects. Restore individual records or bulk restore.',
       href: '/settings/trash',

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -92,7 +92,7 @@ export default function NotificationSettingsPage() {
             </div>
             <div className="text-muted" style={{ fontSize: '0.78125rem', marginTop: '0.125rem' }}>
               {pushSubscribed
-                ? 'Active — You will receive instant notifications on this phone/device'
+                ? 'Active - You will receive instant notifications on this phone/device'
                 : 'Not enabled on this device yet. Add to Home Screen on iPhone or enable in browser.'}
             </div>
           </div>

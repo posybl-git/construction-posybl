@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -403,12 +403,12 @@ export default function TrashRestorePage() {
                         </span>
                       </td>
                       <td>
-                        <span style={{ fontSize: '0.8125rem' }}>{item.project_name || '—'}</span>
+                        <span style={{ fontSize: '0.8125rem' }}>{item.project_name || '-'}</span>
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         {item.amount != null ? (
                           <span className="text-money">{formatPKR(item.amount)}</span>
-                        ) : '—'}
+                        ) : '-'}
                       </td>
                       <td>
                         <div style={{ fontSize: '0.8125rem', fontWeight: 500 }}>

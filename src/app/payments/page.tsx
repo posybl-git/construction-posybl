@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -494,7 +494,7 @@ function PaymentsListContent() {
               <tbody>
                 {filteredPayments.map((pay) => (
                   <tr key={pay.id} id={`row-${pay.id}`}>
-                    <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{pay.serial_no ?? '—'}</td>
+                    <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{pay.serial_no ?? '-'}</td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 500, fontSize: '0.8125rem' }}>
                       {formatDate(pay.payment_date)}
                     </td>
@@ -516,7 +516,7 @@ function PaymentsListContent() {
                       </span>
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>
-                      {pay.reference_no || '—'}
+                      {pay.reference_no || '-'}
                     </td>
                     <td>
                       {pay.milestone_name ? (
@@ -528,7 +528,7 @@ function PaymentsListContent() {
                       )}
                     </td>
                     <td style={{ fontSize: '0.8125rem', color: 'var(--color-secondary-text)' }}>
-                      {pay.note || '—'}
+                      {pay.note || '-'}
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <span className="text-money text-success" style={{ fontWeight: 700, fontSize: '0.9375rem' }}>

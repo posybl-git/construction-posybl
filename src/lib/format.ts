@@ -1,7 +1,7 @@
-// ============================================================
-// PKR Currency Formatting — South Asian Digit Grouping
+﻿// ============================================================
+// PKR Currency Formatting - South Asian Digit Grouping
 // Lakh / Crore shorthand input parsing
-// Date formatting — DD-MMM-YYYY in Asia/Karachi
+// Date formatting - DD-MMM-YYYY in Asia/Karachi
 // Password & WhatsApp helpers (PRD §2.1)
 // ============================================================
 
@@ -141,7 +141,7 @@ export function getYesterdayPKT(): string {
 }
 
 /**
- * Get a relative label for a date — "Today", "Yesterday", or the formatted date
+ * Get a relative label for a date - "Today", "Yesterday", or the formatted date
  */
 export function getRelativeDay(date: string): string {
   const today = getTodayPKT();

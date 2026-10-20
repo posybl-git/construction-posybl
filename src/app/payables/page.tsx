@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -247,7 +247,7 @@ export default function PayablesPage() {
         <div>
           <h1 className="page-title">⏳ Who Do I Owe? (Payables)</h1>
           <p className="text-muted" style={{ fontSize: '0.875rem' }}>
-            Unpaid bills across all sites — grouped by vendor, oldest first
+            Unpaid bills across all sites - grouped by vendor, oldest first
           </p>
         </div>
         <div className="flex gap-xs">
@@ -445,7 +445,7 @@ export default function PayablesPage() {
                         onClick={() => setSelectedDetailExpense(exp)}
                         style={{ cursor: 'pointer' }}
                       >
-                        <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '—'}</td>
+                        <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '-'}</td>
                         <td style={{ whiteSpace: 'nowrap', fontSize: '0.8125rem', fontWeight: 500 }}>
                           {formatDate(exp.expense_date)}
                         </td>

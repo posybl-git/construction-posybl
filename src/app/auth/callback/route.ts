@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+﻿import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
@@ -26,6 +26,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // Auth code exchange failed — redirect to login with error
+  // Auth code exchange failed - redirect to login with error
   return NextResponse.redirect(`${origin}/login?error=auth_failed`);
 }

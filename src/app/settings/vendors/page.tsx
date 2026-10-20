@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -147,7 +147,7 @@ export default function VendorsManagementPage() {
                       {v.name}
                     </td>
                     <td style={{ fontSize: '0.8125rem', color: 'var(--color-secondary-text)' }}>
-                      {v.phone || v.notes || '—'}
+                      {v.phone || v.notes || '-'}
                     </td>
                     <td>
                       <span className="text-money">{formatPKR(v.total_spend)}</span>

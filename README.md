@@ -1,4 +1,4 @@
-# Site Ledger — Construction Expense & Cash-Flow Tracker
+﻿# Site Ledger - Construction Expense & Cash-Flow Tracker
 
 Site Ledger is a fast, role-based construction expense and cash-flow tracker designed specifically for Pakistani construction contractors and site managers. Built with **Next.js 16 (Turbopack)**, **TypeScript**, and **Supabase**.
 
@@ -34,9 +34,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
 Execute the migration scripts in order within your Supabase SQL Editor:
 
-1. `supabase/migrations/001_initial_schema.sql` — Tables, views, triggers, audit logging
-2. `supabase/migrations/002_rls_policies.sql` — Row-Level Security policies
-3. `supabase/migrations/003_seed_categories.sql` — Seed construction categories
+1. `supabase/migrations/001_initial_schema.sql` - Tables, views, triggers, audit logging
+2. `supabase/migrations/002_rls_policies.sql` - Row-Level Security policies
+3. `supabase/migrations/003_seed_categories.sql` - Seed construction categories
 
 ### 3. Run Locally
 

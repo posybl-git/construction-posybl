@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -1269,7 +1269,7 @@ export default function ProjectDetailPage() {
                       >
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-navy)' }}>
-                            #{exp.serial_no ?? '—'} · {exp.expense_name}
+                            #{exp.serial_no ?? '-'} · {exp.expense_name}
                           </div>
                           <div className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.125rem' }}>
                             {formatDate(exp.expense_date)} · {exp.paid_via === 'site_float' ? 'Site Float' : 'Direct'}
@@ -1402,7 +1402,7 @@ export default function ProjectDetailPage() {
                       onClick={() => setSelectedDetailExpense(exp)}
                       style={{ cursor: 'pointer' }}
                     >
-                      <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '—'}</td>
+                      <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '-'}</td>
                       <td style={{ whiteSpace: 'nowrap', fontSize: '0.8125rem', fontWeight: 500 }}>
                         {formatDate(exp.expense_date)}
                       </td>
@@ -1524,7 +1524,7 @@ export default function ProjectDetailPage() {
                 <tbody>
                   {payments.map((p, idx) => (
                     <tr key={p.id} id={`row-${p.id}`}>
-                      <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{p.serial_no ?? '—'}</td>
+                      <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{p.serial_no ?? '-'}</td>
                       <td style={{ fontWeight: 600 }}>{formatDate(p.payment_date)}</td>
                       <td>
                         <span className="badge badge-success">
@@ -1532,10 +1532,10 @@ export default function ProjectDetailPage() {
                         </span>
                       </td>
                       <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8125rem' }}>
-                        {p.reference_no || '—'}
+                        {p.reference_no || '-'}
                       </td>
                       <td style={{ fontSize: '0.8125rem', color: 'var(--color-secondary-text)' }}>
-                        {p.note || '—'}
+                        {p.note || '-'}
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <span className="text-money text-success" style={{ fontSize: '1rem' }}>
@@ -1642,7 +1642,7 @@ export default function ProjectDetailPage() {
                       <td>
                         <div style={{ fontWeight: 600, color: 'var(--color-navy)' }}>{m.name}</div>
                       </td>
-                      <td>{m.planned_date ? formatDate(m.planned_date) : '—'}</td>
+                      <td>{m.planned_date ? formatDate(m.planned_date) : '-'}</td>
                       <td>
                         <span className={`badge badge-${m.status === 'received' ? 'success' : m.status === 'partially_received' ? 'info' : 'warning'}`}>
                           {formatStatus(m.status)}
@@ -1708,7 +1708,7 @@ export default function ProjectDetailPage() {
                   🖨️ Print / Save PDF
                 </button>
                 {(() => {
-                  const stmtMsg = `*Project Statement — ${project.name}*\nClient: ${project.client_name || ''}\n\nContract Value: ${formatPKR(project.contract_value)}\nTotal Received: ${formatPKR(financials.total_received)}\nBalance Due: ${formatPKR(financials.client_balance_due)}\n\nGenerated via Android Properties.`;
+                  const stmtMsg = `*Project Statement - ${project.name}*\nClient: ${project.client_name || ''}\n\nContract Value: ${formatPKR(project.contract_value)}\nTotal Received: ${formatPKR(financials.total_received)}\nBalance Due: ${formatPKR(financials.client_balance_due)}\n\nGenerated via Android Properties.`;
                   const waLink = getWhatsAppShareLink(project.client_phone, stmtMsg);
                   return (
                     <a
@@ -1774,7 +1774,7 @@ export default function ProjectDetailPage() {
               <div>
                 <div className="text-muted" style={{ fontSize: '0.75rem', fontWeight: 600 }}>CLIENT DETAILS</div>
                 <div style={{ fontWeight: 700, color: 'var(--color-navy)', fontSize: '1rem' }}>{project.client_name || 'Client'}</div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--color-secondary-text)' }}>Phone: {project.client_phone || '—'}</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-secondary-text)' }}>Phone: {project.client_phone || '-'}</div>
               </div>
             </div>
 
@@ -1878,10 +1878,10 @@ export default function ProjectDetailPage() {
                     <tbody>
                       {payments.map((p, idx) => (
                         <tr key={p.id}>
-                          <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{p.serial_no ?? '—'}</td>
+                          <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{p.serial_no ?? '-'}</td>
                           <td>{formatDate(p.payment_date)}</td>
                           <td>{formatPaymentMethod(p.method)}</td>
-                          <td>{p.reference_no || '—'}</td>
+                          <td>{p.reference_no || '-'}</td>
                           <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatPKR(p.amount)}</td>
                         </tr>
                       ))}
@@ -2796,7 +2796,7 @@ export default function ProjectDetailPage() {
                 </select>
               </div>
 
-              {/* Site Supervisor Picker — shown when Site Float is selected */}
+              {/* Site Supervisor Picker - shown when Site Float is selected */}
               {editExpPaidVia === 'site_float' && (
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label className="form-label" htmlFor="edit-proj-exp-supervisor">

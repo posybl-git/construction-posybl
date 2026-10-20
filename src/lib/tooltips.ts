@@ -1,5 +1,5 @@
-// ============================================================
-// Android Properties — Tooltip & Helper Text Copy (PRD §6.15)
+﻿// ============================================================
+// Android Properties - Tooltip & Helper Text Copy (PRD §6.15)
 // Kept in a single strings dictionary as required by the PRD
 // ============================================================
 
@@ -30,7 +30,7 @@ export const TOOLTIPS = {
   you_spent_this_month: 'Total of your own expense entries in the current calendar month.',
   your_projects: 'Count of active projects assigned to you.',
   paid_from: 'Funds used for this transaction (Android Properties Own Funds).',
-  paid_via: 'Who physically handed over the money — the site cash you were given, or the admin paying directly.',
+  paid_via: 'Who physically handed over the money - the site cash you were given, or the admin paying directly.',
 } as const;
 
 export const FORM_HELPERS = {

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -50,7 +50,7 @@ export default function SiteDashboard() {
       ? `${year + 1}-01-01`
       : `${year}-${(month + 1).toString().padStart(2, '0')}-01`;
 
-    // 1. Calculate Site Float (Cash with you) — uses server-side RPC to avoid Supabase row limit
+    // 1. Calculate Site Float (Cash with you) - uses server-side RPC to avoid Supabase row limit
     const { data: floatData } = await supabase.rpc('get_user_float_balance', { p_user_id: user.id });
     const floatRow = Array.isArray(floatData) ? floatData[0] : floatData;
     setCashWithYou(floatRow ? Number(floatRow.float_balance) : 0);
@@ -282,25 +282,29 @@ export default function SiteDashboard() {
 
       {/* 2. Secondary Primary Cards (PRD §6.3: You spent today, You spent this month, Your projects) */}
       <div className="grid-stats-3" style={{ marginBottom: '1.25rem' }}>
-        <div className="stat-card" style={{ padding: '0.875rem' }}>
-          <div className="stat-card__label" style={{ fontSize: '0.75rem' }}>
-            <span>You spent today</span>
-            <Tooltip text={TOOLTIPS.you_spent_today} />
+        <Link href="/site/daily" style={{ textDecoration: 'none' }} title="View daily expense breakdown">
+          <div className="stat-card stat-card--tappable" style={{ padding: '0.875rem' }}>
+            <div className="stat-card__label" style={{ fontSize: '0.75rem' }}>
+              <span>You spent today</span>
+              <Tooltip text={TOOLTIPS.you_spent_today} />
+            </div>
+            <div className="stat-card__value" style={{ fontSize: '1.1875rem' }}>
+              {formatPKRShort(todayTotal)}
+            </div>
           </div>
-          <div className="stat-card__value" style={{ fontSize: '1.1875rem' }}>
-            {formatPKRShort(todayTotal)}
-          </div>
-        </div>
+        </Link>
 
-        <div className="stat-card" style={{ padding: '0.875rem' }}>
-          <div className="stat-card__label" style={{ fontSize: '0.75rem' }}>
-            <span>This month</span>
-            <Tooltip text={TOOLTIPS.you_spent_this_month} />
+        <Link href="/site/monthly" style={{ textDecoration: 'none' }} title="View monthly expense breakdown">
+          <div className="stat-card stat-card--tappable" style={{ padding: '0.875rem' }}>
+            <div className="stat-card__label" style={{ fontSize: '0.75rem' }}>
+              <span>This month</span>
+              <Tooltip text={TOOLTIPS.you_spent_this_month} />
+            </div>
+            <div className="stat-card__value" style={{ fontSize: '1.1875rem' }}>
+              {formatPKRShort(monthTotal)}
+            </div>
           </div>
-          <div className="stat-card__value" style={{ fontSize: '1.1875rem' }}>
-            {formatPKRShort(monthTotal)}
-          </div>
-        </div>
+        </Link>
 
         <div className="stat-card" style={{ padding: '0.875rem' }}>
           <div className="stat-card__label" style={{ fontSize: '0.75rem' }}>
@@ -430,7 +434,7 @@ export default function SiteDashboard() {
                     onClick={() => setSelectedDetailExpense(exp)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '—'}</td>
+                    <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '-'}</td>
                     <td>
                       <div style={{ fontWeight: 600, color: 'var(--color-navy)', fontSize: '0.84375rem' }}>
                         {exp.expense_name}

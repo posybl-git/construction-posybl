@@ -1,5 +1,5 @@
--- ============================================================
--- Site Ledger — Complete Database Schema & RLS
+﻿-- ============================================================
+-- Site Ledger - Complete Database Schema & RLS
 -- Run this script in the Supabase SQL Editor:
 -- https://supabase.com/dashboard/project/knistgrvgrxinotumqum/sql/new
 -- ============================================================

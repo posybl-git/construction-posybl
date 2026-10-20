@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -166,7 +166,7 @@ export function ExpenseDetailModal({ expense, onClose }: ExpenseDetailModalProps
                   borderRadius: 'var(--radius-sm)',
                 }}
               >
-                #{expense.serial_no ?? '—'}
+                #{expense.serial_no ?? '-'}
               </span>
               <span className="text-muted" style={{ fontSize: '0.75rem' }}>
                 {formatDate(expense.expense_date)}
@@ -301,7 +301,7 @@ export function ExpenseDetailModal({ expense, onClose }: ExpenseDetailModalProps
                   {projectName || 'View Project'} →
                 </Link>
               ) : (
-                projectName || '—'
+                projectName || '-'
               )}
             </div>
           </div>
@@ -319,7 +319,7 @@ export function ExpenseDetailModal({ expense, onClose }: ExpenseDetailModalProps
               🏪 Payee / Vendor
             </div>
             <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-navy)', marginTop: '0.2rem' }}>
-              {expense.vendor_name || '—'}
+              {expense.vendor_name || '-'}
             </div>
           </div>
 
@@ -336,7 +336,7 @@ export function ExpenseDetailModal({ expense, onClose }: ExpenseDetailModalProps
               🔖 Bill / Reference #
             </div>
             <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-navy)', marginTop: '0.2rem', fontFamily: 'var(--font-mono)' }}>
-              {expense.reference_no || '—'}
+              {expense.reference_no || '-'}
             </div>
           </div>
 

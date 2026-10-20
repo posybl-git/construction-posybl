@@ -162,14 +162,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           >
             ☰
           </button>
-          <div className="flex items-center gap-xs">
+          <Link
+            href={isSupervisor ? '/site' : '/dashboard'}
+            className="flex items-center gap-xs"
+            style={{ textDecoration: 'none' }}
+          >
             <img
               src="/logo.png"
               alt="Android Properties"
               style={{ width: 30, height: 30, borderRadius: '50%', objectFit: 'cover', border: '1.5px solid rgba(255, 255, 255, 0.4)' }}
             />
             <span style={{ fontWeight: 800, fontSize: '0.9375rem', letterSpacing: '-0.01em', color: 'var(--color-white)' }}>Android Properties</span>
-          </div>
+          </Link>
         </div>
 
         <div className="flex items-center gap-xs">
@@ -188,7 +192,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''} no-print`}>
-        <div className="sidebar__brand">
+        <Link
+          href={isSupervisor ? '/site' : '/dashboard'}
+          className="sidebar__brand"
+          style={{ textDecoration: 'none' }}
+          onClick={() => setSidebarOpen(false)}
+        >
           <img
             src="/logo.png"
             alt="Android Properties"
@@ -208,7 +217,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               {isSupervisor ? 'Supervisor Portal' : 'Expense & Cash Tracker'}
             </div>
           </div>
-        </div>
+        </Link>
 
         <nav className="sidebar__nav">
           <div className="sidebar__section-title">

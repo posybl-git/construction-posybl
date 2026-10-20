@@ -1,5 +1,5 @@
--- ============================================================
--- Site Ledger — Demo & Mock Data Seed Script
+﻿-- ============================================================
+-- Site Ledger - Demo & Mock Data Seed Script
 -- Realistic Pakistani residential construction projects, staff floats,
 -- payments, milestones, payables, and daily expenses.
 -- ============================================================
@@ -50,7 +50,7 @@ INSERT INTO public.projects (
 ) VALUES
 (
   'b0000000-0000-0000-0000-000000000001',
-  'Ahmed House — Bahria Town Phase 8',
+  'Ahmed House - Bahria Town Phase 8',
   'Ahmed Bilal',
   '+923004567890',
   'Street 14, Sector B, Bahria Town Phase 8, Rawalpindi',
@@ -67,7 +67,7 @@ INSERT INTO public.projects (
 ),
 (
   'b0000000-0000-0000-0000-000000000002',
-  'Villa 42 — DHA Phase 2, Islamabad',
+  'Villa 42 - DHA Phase 2, Islamabad',
   'Col. (R) Tariq Javaid',
   '+923335557788',
   'Lane 6, Sector C, DHA Phase 2, Islamabad',
@@ -84,7 +84,7 @@ INSERT INTO public.projects (
 ),
 (
   'b0000000-0000-0000-0000-000000000003',
-  'Usman Residence — Gulberg Greens',
+  'Usman Residence - Gulberg Greens',
   'Sheikh Usman Ali',
   '+923219988776',
   'Plot 112, Executive Block, Gulberg Greens, Islamabad',
@@ -101,7 +101,7 @@ INSERT INTO public.projects (
 ),
 (
   'b0000000-0000-0000-0000-000000000004',
-  'Commercial Plaza — G-11 Markaz',
+  'Commercial Plaza - G-11 Markaz',
   'Haji Munir & Sons',
   '+923001122334',
   'Plot 24, G-11 Markaz, Islamabad',

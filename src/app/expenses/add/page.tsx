@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -168,12 +168,12 @@ function AddExpenseForm() {
     setUserRole(role);
     setPaidVia(role === 'admin' ? 'direct' : 'site_float');
 
-    // Calculate site float balance for site manager — uses server-side RPC to avoid row limit
+    // Calculate site float balance for site manager - uses server-side RPC to avoid row limit
     const { data: floatData } = await supabase.rpc('get_user_float_balance', { p_user_id: user.id });
     const floatRow = Array.isArray(floatData) ? floatData[0] : floatData;
     setUserFloatBalance(floatRow ? Number(floatRow.float_balance) : 0);
 
-    // Load projects based on role — only active projects can receive new expenses
+    // Load projects based on role - only active projects can receive new expenses
     if (role === 'admin') {
       const { data } = await supabase
         .from('projects')
@@ -216,7 +216,7 @@ function AddExpenseForm() {
       setSupervisors(enrichedSupervisors);
       await loadLastExpense(projectList);
     } else {
-      // Site manager — load assigned projects for direct selection (only active sites)
+      // Site manager - load assigned projects for direct selection (only active sites)
       const { data: assignments } = await supabase
         .from('project_assignments')
         .select('project_id')
@@ -250,7 +250,7 @@ function AddExpenseForm() {
       }
 
       // Also load ALL active sites across the company for splitting shared expenses
-      // Only status === 'active' — on_hold sites do NOT receive split amounts
+      // Only status === 'active' - on_hold sites do NOT receive split amounts
       let { data: allActive } = await supabase
         .from('projects_for_site')
         .select('id, name, address, status, project_type')
@@ -446,7 +446,7 @@ function AddExpenseForm() {
           {splitResult ? 'Expense Split!' : 'Expense Added!'}
         </h2>
         <p className="text-muted" style={{ marginBottom: splitResult ? '0.75rem' : '1.5rem' }}>
-          {expenseName}{splitDetails ? ` — ${splitDetails}` : ''} — {formatPKR(parsePKRInput(amountInput))}
+          {expenseName}{splitDetails ? ` - ${splitDetails}` : ''} - {formatPKR(parsePKRInput(amountInput))}
         </p>
 
         {/* Split breakdown summary */}
@@ -589,7 +589,7 @@ function AddExpenseForm() {
             </select>
           </div>
 
-          {/* Split Details — shown only when Other is selected */}
+          {/* Split Details - shown only when Other is selected */}
           {isOtherProject && (
             <div className="form-group">
               <div style={{

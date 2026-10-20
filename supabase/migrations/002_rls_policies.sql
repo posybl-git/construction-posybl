@@ -1,5 +1,5 @@
--- ============================================================
--- Site Ledger — Row Level Security Policies
+﻿-- ============================================================
+-- Site Ledger - Row Level Security Policies
 -- Per PRD §12: enforce access in the database, not only in the UI
 -- ============================================================
 
@@ -110,7 +110,7 @@ create policy "site_manager_update_own_expenses" on public.expenses
   );
 
 -- ============================================================
--- CLIENT PAYMENTS — admin only
+-- CLIENT PAYMENTS - admin only
 -- ============================================================
 alter table public.client_payments enable row level security;
 
@@ -162,7 +162,7 @@ create policy "site_manager_insert_categories" on public.expense_categories
   with check ((select public.get_user_role()) = 'site_manager');
 
 -- ============================================================
--- CONTRACT REVISIONS — admin only
+-- CONTRACT REVISIONS - admin only
 -- ============================================================
 alter table public.contract_revisions enable row level security;
 
@@ -172,7 +172,7 @@ create policy "admin_all_contract_revisions" on public.contract_revisions
   with check ((select public.get_user_role()) = 'admin');
 
 -- ============================================================
--- AUDIT LOG — admin read-only, site manager no access
+-- AUDIT LOG - admin read-only, site manager no access
 -- ============================================================
 alter table public.audit_log enable row level security;
 

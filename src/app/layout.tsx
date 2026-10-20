@@ -1,8 +1,8 @@
-import type { Metadata, Viewport } from "next";
+﻿import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Android Properties — Construction Expense Tracker",
+  title: "Android Properties - Construction Expense Tracker",
   description: "Private expense and payment tracker for residential construction contracting. Track project expenses, client payments, and margins in PKR.",
   icons: {
     icon: [

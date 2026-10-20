@@ -1,10 +1,10 @@
--- ============================================================
--- Site Ledger — Initial Schema
+﻿-- ============================================================
+-- Site Ledger - Initial Schema
 -- Phase 1: Core tables, indexes, views, audit triggers
 -- ============================================================
 
 -- ============================================================
--- 1. PROFILES — extends auth.users
+-- 1. PROFILES - extends auth.users
 -- ============================================================
 create table public.profiles (
   id          uuid references auth.users on delete cascade primary key,
@@ -64,7 +64,7 @@ create table public.projects (
   deleted_by            uuid references auth.users
 );
 
--- Restricted view for site managers — NO contract_value, NO financial data
+-- Restricted view for site managers - NO contract_value, NO financial data
 create view public.projects_for_site as
   select id, name, address, status
   from public.projects
@@ -83,7 +83,7 @@ create table public.project_assignments (
 );
 
 -- ============================================================
--- 4. EXPENSES — most-used table
+-- 4. EXPENSES - most-used table
 -- ============================================================
 create table public.expenses (
   id                uuid default gen_random_uuid() primary key,
@@ -171,7 +171,7 @@ create table public.contract_revisions (
 );
 
 -- ============================================================
--- 9. AUDIT LOG — append-only, no soft-delete columns
+-- 9. AUDIT LOG - append-only, no soft-delete columns
 -- ============================================================
 create table public.audit_log (
   id          uuid default gen_random_uuid() primary key,
@@ -250,7 +250,7 @@ create trigger set_updated_at_client_payments before update on public.client_pay
 create trigger set_updated_at_vendors         before update on public.vendors         for each row execute function public.set_updated_at();
 
 -- ============================================================
--- 13. AUDIT LOG PROTECTION — no updates or deletes allowed
+-- 13. AUDIT LOG PROTECTION - no updates or deletes allowed
 -- ============================================================
 revoke update, delete on public.audit_log from public;
 revoke update, delete on public.audit_log from authenticated;

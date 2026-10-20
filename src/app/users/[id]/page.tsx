@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -49,6 +49,7 @@ export default function UserDetailPage() {
   const [currentFloat, setCurrentFloat] = useState(0);
   const [lastIssuance, setLastIssuance] = useState<CashIssuance | null>(null);
   const [loading, setLoading] = useState(true);
+  const [viewerRole, setViewerRole] = useState<'admin' | 'site_manager'>('admin');
 
   // Filters
   const [projectFilter, setProjectFilter] = useState('');
@@ -107,6 +108,17 @@ export default function UserDetailPage() {
       setLoading(true);
     }
 
+    // Check viewer's role
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    let currentRole: 'admin' | 'site_manager' = 'admin';
+    if (currentUser) {
+      const { data: viewerData } = await supabase.from('profiles').select('role').eq('id', currentUser.id).single();
+      if (viewerData?.role) {
+        currentRole = viewerData.role as 'admin' | 'site_manager';
+        setViewerRole(currentRole);
+      }
+    }
+
     // 1. Load user profile
     const { data: userProfile } = await supabase
       .from('profiles')
@@ -115,7 +127,7 @@ export default function UserDetailPage() {
       .single();
 
     if (!userProfile) {
-      router.push('/users');
+      router.push(currentRole === 'site_manager' ? '/site' : '/users');
       return;
     }
     setProfile(userProfile as Profile);
@@ -564,8 +576,12 @@ export default function UserDetailPage() {
     <div className="page-container">
       {/* Top Breadcrumb Header */}
       <div style={{ marginBottom: '1rem' }}>
-        <Link href="/users" className="btn btn-ghost btn-sm" style={{ paddingLeft: 0 }}>
-          ← Back to All Staff
+        <Link
+          href={viewerRole === 'site_manager' ? '/site' : '/users'}
+          className="btn btn-ghost btn-sm"
+          style={{ paddingLeft: 0 }}
+        >
+          {viewerRole === 'site_manager' ? '← Back to Site Home' : '← Back to All Staff'}
         </Link>
       </div>
 
@@ -599,48 +615,56 @@ export default function UserDetailPage() {
             </div>
           </div>
 
-          {/* Quick Action Buttons for Admin */}
+          {/* Quick Action Buttons */}
           <div className="flex gap-xs flex-wrap">
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => setShowIssueModal(true)}
-            >
-              💵 Issue Cash
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setShowReturnModal(true)}
-            >
-              ↩️ Cash Returned
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => setShowAdjustModal(true)}
-            >
-              ⚖️ Adjustment
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => {
-                setCustomPassword(generateTempPassword());
-                setPasswordError('');
-                setShowResetPassModal(true);
-              }}
-            >
-              🔑 Reset Password
-            </button>
-            {profile.role === 'site_manager' && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => setShowAssignModal(true)}
-              >
-                🏗️ Sites ({assignedProjectIds.length})
-              </button>
+            {viewerRole === 'admin' ? (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setShowIssueModal(true)}
+                >
+                  💵 Issue Cash
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setShowReturnModal(true)}
+                >
+                  ↩️ Cash Returned
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setShowAdjustModal(true)}
+                >
+                  ⚖️ Adjustment
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setCustomPassword(generateTempPassword());
+                    setPasswordError('');
+                    setShowResetPassModal(true);
+                  }}
+                >
+                  🔑 Reset Password
+                </button>
+                {profile.role === 'site_manager' && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setShowAssignModal(true)}
+                  >
+                    🏗️ Sites ({assignedProjectIds.length})
+                  </button>
+                )}
+              </>
+            ) : (
+              <Link href="/expenses/add" className="btn btn-primary btn-sm">
+                ➕ Record Site Expense
+              </Link>
             )}
           </div>
         </div>
@@ -801,14 +825,14 @@ export default function UserDetailPage() {
                         <span className="text-success" style={{ fontWeight: 700 }}>
                           +{formatPKRShort(item.amount_in)}
                         </span>
-                      ) : '—'}
+                      ) : '-'}
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       {item.amount_out > 0 ? (
                         <span className="text-danger" style={{ fontWeight: 700 }}>
                           −{formatPKRShort(item.amount_out)}
                         </span>
-                      ) : '—'}
+                      ) : '-'}
                     </td>
                     <td style={{ textAlign: 'right' }}>
                       <span
@@ -820,37 +844,39 @@ export default function UserDetailPage() {
                     </td>
                     <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {item.type !== 'expense' ? (
-                        <div style={{ display: 'inline-flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenEditIssuance(item);
-                            }}
-                            title="Edit entry"
-                            style={{ padding: '0.2rem 0.4rem', cursor: 'pointer' }}
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-xs text-danger"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteLedgerEntry(item);
-                            }}
-                            title="Move to Trash"
-                            style={{ padding: '0.2rem 0.4rem', cursor: 'pointer' }}
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                        viewerRole === 'admin' ? (
+                          <div style={{ display: 'inline-flex', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenEditIssuance(item);
+                              }}
+                              title="Edit entry"
+                              style={{ padding: '0.2rem 0.4rem', cursor: 'pointer' }}
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-xs text-danger"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteLedgerEntry(item);
+                              }}
+                              title="Move to Trash"
+                              style={{ padding: '0.2rem 0.4rem', cursor: 'pointer' }}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        ) : null
                       ) : (
                         <Link
-                          href={`/expenses?search=${encodeURIComponent(item.description)}`}
+                          href={viewerRole === 'site_manager' ? `/site/daily?date=${item.date}` : `/expenses?search=${encodeURIComponent(item.description)}`}
                           className="btn btn-ghost btn-xs"
-                          title="View in Expenses"
+                          title={viewerRole === 'site_manager' ? 'View in Daily Expenses' : 'View in Expenses'}
                           style={{ padding: '0.2rem 0.4rem' }}
                           onClick={(e: React.MouseEvent) => e.stopPropagation()}
                         >

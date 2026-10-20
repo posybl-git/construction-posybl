@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
     const assignList = (assignmentsData || []) as { project_id: string; user_id: string }[];
     const supervisorProfiles = profilesData || [];
 
-    // Calculate site float (cash with staff) — uses server-side RPC for accuracy
+    // Calculate site float (cash with staff) - uses server-side RPC for accuracy
     const { data: allFloatBalances } = await supabase.rpc('get_all_float_balances');
     const cashWithStaff = (allFloatBalances || []).reduce(
       (sum: number, f: { float_balance: number }) => sum + Number(f.float_balance), 0
@@ -244,7 +244,7 @@ export default function AdminDashboard() {
           id: `ms-${m.id}`,
           type: 'milestone',
           title: `Milestone Overdue: ${m.name}`,
-          desc: `${proj?.name || 'Project'} — ${formatPKRShort(m.planned_amount)} planned for ${formatDate(m.planned_date)} not fully received`,
+          desc: `${proj?.name || 'Project'} - ${formatPKRShort(m.planned_amount)} planned for ${formatDate(m.planned_date)} not fully received`,
           severity: 'danger',
           link: `/projects/${m.project_id}`,
         });

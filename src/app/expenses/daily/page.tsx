@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -320,7 +320,7 @@ export default function DailyViewPage() {
                       onClick={() => setSelectedDetailExpense(exp)}
                       style={{ cursor: 'pointer' }}
                     >
-                      <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '—'}</td>
+                      <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '-'}</td>
                       <td>
                         <div style={{ fontWeight: 600, color: 'var(--color-navy)' }}>{exp.expense_name}</div>
                         {exp.purpose && <div className="text-muted" style={{ fontSize: '0.71875rem' }}>{exp.purpose}</div>}
@@ -334,7 +334,7 @@ export default function DailyViewPage() {
                           {exp.project_name}
                         </Link>
                       </td>
-                      <td style={{ fontSize: '0.8125rem' }}>{exp.vendor_name || '—'}</td>
+                      <td style={{ fontSize: '0.8125rem' }}>{exp.vendor_name || '-'}</td>
                       <td>
                         <span className={`badge ${exp.paid_via === 'site_float' ? 'badge-info' : 'badge-neutral'}`} style={{ fontSize: '0.6875rem' }}>
                           {exp.paid_via === 'site_float' ? 'Site Float' : 'Direct'}

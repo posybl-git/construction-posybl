@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr';
+﻿import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 const supabaseUrl =
@@ -42,7 +42,7 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh the session — this is important for server components
+  // Refresh the session - this is important for server components
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -54,7 +54,7 @@ export async function updateSession(request: NextRequest) {
   );
 
   if (!user && !isPublicPath) {
-    // Not authenticated — redirect to login
+    // Not authenticated - redirect to login
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
@@ -74,16 +74,19 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    if (request.nextUrl.pathname === '/login') {
+    if (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/') {
       const url = request.nextUrl.clone();
       url.pathname = profile?.role === 'admin' ? '/dashboard' : '/site';
       return NextResponse.redirect(url);
     }
 
-    const adminOnlyPaths = ['/dashboard', '/payments', '/projects'];
+    const adminOnlyPaths = ['/dashboard', '/payments', '/payables', '/settings', '/projects/new'];
+    const isUserList = request.nextUrl.pathname === '/users';
+    const isExpenseAdd = request.nextUrl.pathname === '/expenses/add';
+    const isExpenses = request.nextUrl.pathname.startsWith('/expenses') && !isExpenseAdd;
     const isAdminPath = adminOnlyPaths.some(path =>
-      request.nextUrl.pathname.startsWith(path)
-    );
+      request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(path + '/')
+    ) || isUserList || isExpenses;
 
     if (isAdminPath && profile?.role !== 'admin') {
       const url = request.nextUrl.clone();

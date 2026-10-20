@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -119,7 +119,7 @@ export default function NewProjectPage() {
               className="form-input"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder='e.g. "Ahmed House — Bahria Phase 8"'
+              placeholder='e.g. "Ahmed House - Bahria Phase 8"'
               required
             />
           </div>

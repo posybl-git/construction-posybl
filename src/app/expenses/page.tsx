@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -265,7 +265,7 @@ export default function AllExpensesPage() {
     return { start: '', end: '' };
   }, [datePreset, customStartDate, customEndDate]);
 
-  // Filtered expenses (PRD §6.14: "Filters combine — each narrows the result")
+  // Filtered expenses (PRD §6.14: "Filters combine - each narrows the result")
   const filteredExpenses = useMemo(() => {
     return expenses.filter(e => {
       // Date bounds
@@ -792,7 +792,7 @@ export default function AllExpensesPage() {
                         onClick={() => setSelectedDetailExpense(exp)}
                         style={{ cursor: 'pointer' }}
                       >
-                        <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '—'}</td>
+                        <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '-'}</td>
                         <td style={{ whiteSpace: 'nowrap', fontSize: '0.8125rem' }}>
                           {formatDate(exp.expense_date)}
                         </td>
@@ -891,7 +891,7 @@ export default function AllExpensesPage() {
                     onClick={() => setSelectedDetailExpense(exp)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '—'}</td>
+                    <td style={{ color: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>#{exp.serial_no ?? '-'}</td>
                     <td style={{ whiteSpace: 'nowrap', fontSize: '0.8125rem', fontWeight: 500 }}>
                       {formatDate(exp.expense_date)}
                     </td>
@@ -911,7 +911,7 @@ export default function AllExpensesPage() {
                       </Link>
                     </td>
                     <td style={{ fontSize: '0.8125rem' }}>
-                      {exp.vendor_name || '—'}
+                      {exp.vendor_name || '-'}
                     </td>
                     <td>
                       <span className={`badge ${exp.paid_via === 'site_float' ? 'badge-info' : 'badge-neutral'}`} style={{ fontSize: '0.6875rem' }}>
@@ -1049,7 +1049,7 @@ export default function AllExpensesPage() {
                 </select>
               </div>
 
-              {/* Site Supervisor Picker — shown when Site Float is selected */}
+              {/* Site Supervisor Picker - shown when Site Float is selected */}
               {editPaidVia === 'site_float' && (
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label className="form-label" htmlFor="edit-exp-supervisor">

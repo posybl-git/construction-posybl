@@ -1,5 +1,5 @@
--- ============================================================
--- Site Ledger — Seed Expense Categories
+﻿-- ============================================================
+-- Site Ledger - Seed Expense Categories
 -- Pakistani construction site terms (Roman-Urdu retained per PRD §8)
 -- ============================================================
 

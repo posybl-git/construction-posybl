@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
@@ -151,7 +151,7 @@ async function fetchAdminNotifications(supabase: ReturnType<typeof createClient>
           category: 'float',
           icon: '⚠️',
           title: `Float Balance Zero: ${sup.full_name}`,
-          body: `Supervisor has Rs 0 cash in hand — top-up needed for site expenses`,
+          body: `Supervisor has Rs 0 cash in hand - top-up needed for site expenses`,
           href: `/users/${sup.id}`,
           badgeLabel: 'Zero Float',
           createdAt: now,
@@ -271,7 +271,7 @@ async function fetchSupervisorNotifications(
   const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000).toISOString().split('T')[0];
 
   try {
-    // 1. Physical Cash in Hand (Site Float Balance) — uses server-side RPC to avoid row limit
+    // 1. Physical Cash in Hand (Site Float Balance) - uses server-side RPC to avoid row limit
     const { data: floatData } = await supabase.rpc('get_user_float_balance', { p_user_id: userId });
     const floatRow = Array.isArray(floatData) ? floatData[0] : floatData;
     const cashInHand = floatRow ? Number(floatRow.float_balance) : 0;
@@ -282,7 +282,7 @@ async function fetchSupervisorNotifications(
         type: 'alert',
         category: 'float',
         icon: '🚨',
-        title: 'Float Negative — Reimbursement Due',
+        title: 'Float Negative - Reimbursement Due',
         body: `You spent Rs ${Math.abs(cashInHand).toLocaleString('en-IN')} personal funds on site. Contact admin for settlement.`,
         href: `/users/${userId}`,
         badgeLabel: 'Settlement Due',
@@ -357,7 +357,7 @@ async function fetchSupervisorNotifications(
         icon: '📋',
         title: `Pending Bill: ${exp.expense_name}`,
         body: `${formatPKR(exp.amount, false)} to ${exp.vendor_name || 'Vendor'} recorded as unpaid (${days}d ago)`,
-        href: '/expenses/daily',
+        href: '/site/daily',
         badgeLabel: 'Unpaid Dues',
         createdAt: new Date(exp.expense_date),
       });
