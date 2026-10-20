@@ -1,0 +1,802 @@
+# Construction Project Expense & Payment Tracker
+
+*Product Requirements Document — for build in Lovable + Supabase*
+
+> **Prepared for:** Development team — **Owner / decision maker:** Muhammad Wakeel — **Market:** Islamabad / Rawalpindi, Pakistan  \|  **Currency:** PKR  \|  **Timezone:** Asia/Karachi — **Stack:** Lovable (frontend) + Supabase (Postgres, Auth, Edge Functions; Storage used only for backup exports) — **Date:** 11 September 2026
+
+---
+
+## 1. Purpose
+
+A private web application for a residential construction contracting business. For every house under construction it answers four questions at a glance:
+
+1.  How much has the client paid me so far?
+2.  How much have I spent on this house so far?
+3.  What is the difference, and how much is the client still due to pay?
+4.  What do I still owe to labour and vendors?
+
+A site supervisor enters expenses daily from his phone. He must never see client payments, contract values, or profit. The owner sees everything, from any browser, through one link.
+
+> **Design principle:** This is a money-reconciliation tool, not a project-management tool. No Gantt charts, no task boards, no material inventory in v1. Every screen should exist to answer one of the four questions above.
+
+---
+
+## 2. Users, roles and access management
+
+| Role                                | Can do                                                                                                                                                                                                                                              | Cannot do                                                                                                                                                                                                   |
+|-------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Admin / Owner** — Muhammad Wakeel | Everything: create and edit projects, set and revise contract values, record client payments and schedules, add / edit / delete expenses, manage users and project assignments, view margins and all reports, restore deleted records, export data. | Permanently erase data (all deletes are soft — see §7). Edit the audit log.                                                                                                                                 |
+| **Site Manager** — Site supervisor  | Add expenses to projects assigned to him. View the expense list and daily / monthly expense totals for his own assigned projects only. Edit an expense he created, within 24 hours of creating it (window configurable by admin).                   | Delete anything. See contract value, client payments, payment schedule, amount receivable, cash in hand, margin, or any company-wide figures. See projects he is not assigned to. Create projects or users. |
+
+There is no public signup. The admin invites users by email; Supabase Auth sends the invite.
+
+*Reserved for later (do not build in v1):* an **Accountant** role with read-only access to everything, and a **Client** role with read-only access to their own project statement.
+
+### 2.1 Inviting users (admin only)
+
+The team will grow — today one site supervisor, more later. The admin must be able to add users himself, without a developer. From Settings → Users:
+
+- **Add user** form: full name, role, and either a **mobile number** or an **email address** as the login identifier (at least one required; both allowed)
+- The app generates a **temporary password** automatically — 8 characters, readable, no ambiguous characters (exclude O/0, I/l/1)
+- Optionally assign projects during creation, or leave for later
+- On save, show the credentials **once** on screen in a clear panel: login identifier + temporary password, with a **Copy** button and a **Share on WhatsApp** button (a `wa.me` deep link pre-filled with the credentials message). This is how they will actually be delivered in practice. Note this is a plain `wa.me` link that opens WhatsApp on the admin's own phone — it is **not** a WhatsApp API integration and costs nothing.
+- If an email was provided, also send the credentials by email automatically
+- Admin can **reset password** for any user at any time, which generates a fresh temporary password shown the same way
+- Admin can **deactivate** a user (blocks login, keeps all their historical entries intact) and **reactivate** later. Users are never deleted.
+
+### 2.2 First login and password change
+
+- The user logs in with their phone number or email plus the temporary password
+- `must_change_password` is set true on creation and after any admin reset. While it is true, the user is routed to a Set Your Password screen and cannot reach any other part of the app
+- Minimum 8 characters, confirmed twice; once set, the flag clears and normal routing resumes
+- Afterwards the user can change their own password any time from Profile → Change password
+- Temporary passwords expire after 7 days; an expired one requires an admin reset
+
+> **Implementation note on phone-number login.** Supabase Auth supports phone login only through SMS OTP, which needs a paid SMS provider (Twilio or similar) and is unreliable and costly for Pakistani numbers. Do **not** build it that way. Instead keep Supabase's standard email/password auth and map phone numbers onto it: when the admin enters a mobile number, normalise it to `+92XXXXXXXXXX` and create the auth user with a synthetic internal address such as `923001234567@users.siteledger.app`, storing the real phone in `profiles.phone`. The login screen accepts a phone number or an email; if the input looks like a phone number, the app normalises it and swaps in the synthetic address before calling Supabase. The user only ever sees and types their phone number. This gives phone-based login with no SMS cost and no OTP dependency.
+
+### 2.3 Assigning projects to users
+
+- A site manager sees only the projects assigned to him — no assignment means no visibility, enforced by RLS through `project_assignments`
+- Assignment is editable from two directions: on the user (a multi-select of projects) and on the project (a multi-select of users). Both write the same table.
+- One user may hold many projects; one project may have several users
+- Removing an assignment hides the project from that user going forward but **never** removes or hides the expenses he already entered — those stay on the project permanently, attributed to him
+- Admins are implicitly assigned to everything and need no rows in this table
+
+### 2.4 No limits on accounts or projects
+
+There is no cap anywhere in the system: any number of admins, any number of site managers, any number of projects. Do not build seat limits, plan tiers, or a hardcoded single-admin assumption. Several people may hold the admin role simultaneously and all have identical powers.
+
+Expect 5 to 30 active projects at a time and several hundred completed ones over the years, with tens of thousands of expense rows. Every list, dashboard figure and filter must be built for that scale rather than assuming one project — paginate lists, index the tables per §11, and compute dashboard totals with database aggregates rather than by pulling all rows into the browser.
+
+### 2.5 Activating and deactivating users
+
+All of this is done by an admin from the normal application interface. No developer involvement and no database access is ever required to manage people.
+
+- **Deactivate** — blocks login immediately and removes the user from assignment dropdowns. Every expense they entered stays exactly where it is, still attributed to them. Nothing is hidden or removed.
+- **Reactivate** — restores login with the same account and history. If the password was forgotten in the meantime, the admin issues a fresh temporary password per §2.1.
+- Deactivated users appear in a separate collapsed section of the Users screen, not mixed in with active ones.
+- **Users are never deleted.** Deletion would orphan historical expense records and break the audit trail. Deactivation is the only removal mechanism, and the Users screen should not offer a delete action at all.
+- An admin cannot deactivate their own account, and the last remaining active admin cannot be deactivated — block it with a clear message.
+
+---
+
+## 3. Project types
+
+Every project is one of three types. The type changes what the numbers mean, but not the structure of the app.
+
+| Type                        | Meaning                                                                                                                              | What the contract value represents                                                        |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| **Turnkey (fixed price)**   | We build the whole house — construction, material, finishing — for one agreed total. Example: Rs 1,20,00,000 for the complete house. | The full price quoted to the client. Expenses are our cost, so margin is real profit.     |
+| **Labour only**             | Client buys and supplies the construction material. We charge only for labour and site work. Example: Rs 13,00,000 labour charge.    | The labour charge only. Expenses recorded are labour, wages, and any site costs we carry. |
+| **Cost plus / supervision** | Client reimburses actual cost and pays an agreed percentage on top for supervision.                                                  | Calculated, not fixed: total expenses + agreed % (store the % on the project).            |
+
+**Important:** expenses are tracked on **all three** types, including turnkey, so the owner can see the margin on fixed-price jobs. There is no type where expense tracking is switched off.
+
+---
+
+## 4. Core objects
+
+### 4.1 Project
+
+- Project name (e.g. "Ahmed House — Bahria Phase 8")
+- Client name, client phone (+92 format)
+- Site address / area; plot size in marla or kanal (optional); covered area in sq ft (optional)
+- Project type (per §3); supervision % if cost-plus
+- Contract value (PKR)
+- Start date, expected completion date
+- Status: Active / On hold / Completed / Archived
+- Assigned site manager(s)
+- Notes
+
+### 4.2 Payment milestone (the pre-agreed payment schedule)
+
+Clients pay in chunks against an agreed schedule, so the schedule is a first-class object, not a note.
+
+- Milestone name — seed suggestions: Advance / Booking, Foundation, DPC, Roof slab (first), Roof slab (second), Grey structure complete, Brickwork, Plaster, Electrical & plumbing, Finishing, Handover
+- Planned amount (PKR), planned date *or* "on stage completion"
+- Sequence number (for ordering)
+- Derived status: Pending / Partially received / Received / Overdue (overdue = planned date passed and not fully received)
+
+The sum of milestone amounts should be compared to the contract value; if they do not match, show a soft warning to the admin (do not block — schedules change).
+
+### 4.3 Client payment (money in)
+
+- Project, date received, amount
+- Method: Cash / Bank transfer / Cheque / Easypaisa / JazzCash / Other
+- Reference number (cheque no., transaction ID) — optional
+- Linked milestone — optional; one payment may partly cover a milestone
+- Received by, note
+
+### 4.4 Expense (money out) — the most-used object in the app
+
+| Field                      | Required | Notes                                                                                                                                                                                                                             |
+|----------------------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Project                    | Yes      | Site manager sees only his assigned projects in the dropdown.                                                                                                                                                                     |
+| Expense name / description | Yes      | Short. e.g. "50 bags cement".                                                                                                                                                                                                     |
+| Quantity                   | No       | Numeric. e.g. 100.                                                                                                                                                                                                                |
+| Unit                       | No       | Free text with autocomplete: bag, kg, ton, foot, sq ft, trip, day, piece, bundle.                                                                                                                                                 |
+| Rate (PKR)                 | No       | Price per unit. e.g. 850.                                                                                                                                                                                                         |
+| Amount (PKR)               | Yes      | Auto-calculated as quantity × rate when both are filled, but always editable — the typed amount wins if the user overrides it. Accepts shorthand input — see §9. If quantity and rate are left blank, amount is entered directly. |
+| Date of expense            | Yes      | Defaults to today (Asia/Karachi). Future dates blocked. Site manager may back-date up to 7 days; admin unrestricted.                                                                                                              |
+| Category                   | Yes      | Free text with autocomplete from previously used values — see §8.                                                                                                                                                                 |
+| Purpose / note             | No       | Why the expense was made. e.g. "for roof slab, block B".                                                                                                                                                                          |
+| Payee / vendor             | No       | Free text with autocomplete. Drives the "who do I owe" view.                                                                                                                                                                      |
+| Payment status             | Yes      | **Paid** or **Unpaid (due)**. If Paid: paid date + method.                                                                                                                                                                        |
+| Paid via                   | Yes      | Who physically handed the money over: **Site float** (from cash the site manager is holding — see §4.8) or **Direct** (paid by the admin himself). Defaults to Site float for site managers, Direct for admins.                   |
+| Entered by / entered at    | Auto     | Set server-side from the session. Never editable.                                                                                                                                                                                 |
+
+### 4.5 Vendor / payee
+
+Auto-created from the payee field, deduplicated on a normalised name (trimmed, case-insensitive). Gives a simple per-payee outstanding balance. Admin can merge duplicates.
+
+### 4.6 Contract revision
+
+Extra work and variations are normal. Contract value is never silently overwritten. Every change writes a row: date, old value, new value, reason, changed by. The project header shows "Revised" with a tooltip listing the history.
+
+### 4.7 Cash issuance and the site float
+
+The admin hands cash to a site manager, who then spends it over the following days. Without tracking this, the app cannot tell whether money has left the business or is simply sitting in someone's pocket.
+
+- **Only an admin creates a cash issuance.** The site manager can never add money to his own float. Fields: date, recipient (a user), amount, method, note.
+- **The float is one pocket per person, never tied to a project.** Cash issued to Ahsan is simply cash with Ahsan. He may spend it on any project assigned to him, and each expense draws down the same single balance. There is deliberately no project field on an issuance — see the box below.
+- Each user has a running **float balance** = total issued to him − total spent from his float.
+- Every expense marked *Paid via: Site float* draws the float of the user who entered it down automatically.
+- The site manager sees his own float balance prominently on his dashboard and at the top of the Add Expense form: "Cash with you: Rs 32,500". This is the only money figure he ever sees, and it is his own cash custody, not client money.
+- A negative float means he spent more than he was given — he is owed a reimbursement. Show it in red on both his screen and the admin's.
+- **A float at zero never blocks an entry.** If his balance is exhausted and he adds another expense paid from the float, save it and let the balance go negative — he genuinely did spend that money and the record must exist. Show a non-blocking notice ("This takes your cash below zero. The company now owes you Rs X") and notify the admin. Blocking the entry would simply mean the expense goes unrecorded, which is the worst outcome.
+- Admin sees a **Cash with staff** panel: every user, amount issued, amount spent, balance still held, and the date of the last issuance.
+- Returning unspent cash is recorded as a **negative issuance** ("cash returned"), which reduces the float. Do not build a separate object for it.
+- Issuances follow the same soft-delete and audit rules as everything else.
+
+> **Why the float is not project-specific.** Physical cash in a man's pocket does not know which site it was meant for. If a float were tied to one project, the first time Ahsan was given money for Site A and spent it at Site B the app would either block a legitimate entry or quietly produce a wrong balance. Per-project attribution already comes from the *expense*, which always names its project, so nothing is lost: his ledger can be filtered by project to show exactly where the float went. Attribution comes from the expense; custody comes from the person. Do not add a project field to issuances, and do not validate an expense against which project the cash was "for".
+
+> **There is no "whose money" field on an expense.** *Paid via* answers the only question that must be recorded by hand: does the site manager still have this cash in his pocket, or did the admin pay it directly? Whether the money originated from the client or from the owner's own pocket is **never tagged** — it is computed from cash flow per §5, because a tag can be set wrongly in a hurry and a calculation cannot.
+
+### 4.8 Project lifecycle — archive, not delete
+
+A project holds months of financial history. Archiving is the normal way to retire one; deleting is close to never.
+
+- **Archive** is a first-class, prominent action available to any admin from the project detail screen and from the projects list. It sets status to Archived: the project drops out of the default list, out of dashboard totals, and out of every assigned user's view, but all its expenses, payments and documents remain fully intact and readable. **Unarchive** restores it completely. This action is fully reversible and needs no warning beyond a simple confirm.
+- Archived projects live behind a filter or a separate tab, searchable at any time, with all their figures still viewable.
+- **Delete** must exist but must be hard to reach. It belongs at the bottom of the project's Settings tab in a small, plainly-styled destructive section — never a visible button on the project header, the projects list, a row action menu, or a card. Reaching it requires: opening project settings, scrolling to the bottom, and typing the exact project name to confirm.
+- Deleting a project is still a soft delete (§7): the project and everything under it move to Trash and remain fully recoverable by an admin. Nothing is erased from the database.
+- Show a clear warning at that point stating what will be hidden — expense count, payment count, total value — and suggest archiving instead.
+- Only an admin may archive or delete. Site managers see neither action.
+
+---
+
+## 5. The money logic
+
+Implement these exactly. They are the whole point of the application.
+
+#### Per project
+
+```
+total_received       = SUM(client_payments.amount)
+total_expenses       = SUM(expenses.amount)                    -- paid and unpaid both
+total_paid_out       = SUM(expenses.amount WHERE status = 'Paid')
+outstanding_payables = SUM(expenses.amount WHERE status = 'Unpaid')
+
+client_balance_due   = contract_value - total_received         -- "how much client still has to pay me"
+cash_in_hand         = total_received - total_paid_out         -- "client money I am still holding"
+net_position         = total_received - total_expenses         -- "the difference between both"
+
+project_margin       = contract_value - total_expenses
+margin_percent       = project_margin / contract_value * 100
+budget_used_percent  = total_expenses / contract_value * 100
+
+-- whose money, derived entirely from cash flow. Nothing is tagged by hand.
+spent_from_client    = MIN(total_paid_out, total_received)
+spent_from_own       = MAX(0, total_paid_out - total_received)
+client_money_with_us = MAX(0, total_received - total_paid_out)
+```
+#### Site float (per user, per §4.7)
+
+```
+float_issued    = SUM(cash_issuances.amount WHERE recipient = user)
+float_spent     = SUM(expenses.amount WHERE paid_via = 'site_float' AND created_by = user)
+float_balance   = float_issued - float_spent                  -- "cash with you"
+
+cash_with_staff = SUM(float_balance) across all users         -- admin panel
+```
+#### Cost-plus projects only
+
+```
+contract_value       = total_expenses * (1 + supervision_percent / 100)   -- recalculated, not stored
+```
+#### Company-wide (admin dashboard)
+
+```
+Sum each of the above across all projects with status = 'Active'.
+Today's spend    = SUM(expenses.amount WHERE date = today, all projects)
+This month spend = SUM(expenses.amount WHERE date within current month)
+```
+> **Whose money is a calculation, never a label.** When a client has not yet paid enough, the owner funds the site from his own pocket. `spent_from_own` answers "how much of my own money is sitting in this project right now" and falls straight out of money in versus money out. There is deliberately **no field anywhere** asking a user to tag an expense as client-funded or self-funded: such a tag would be set wrongly by whoever is in a hurry at a hardware shop, and would then produce a confident, wrong number. — — Critically: **own money spent is not a separate receivable.** The client already owes `client_balance_due` = contract value − received, and that figure already covers the work the owner funded himself. Do not add own-money spend on top of it, or the app will show the client owing far more than he does. Extra work outside the original scope is handled by **revising the contract value** (§4.6), which raises what the client owes — not by flagging individual expenses.
+
+> **Display rules:** `budget_used_percent` renders as a progress bar — neutral below 80%, amber 80–100%, red above 100%. `client_balance_due` is the headline number on every project card. Negative `cash_in_hand` means the owner is funding the site from his own pocket — show it in red with the label "You are out of pocket".
+
+---
+
+## 6. Screens
+
+### 6.1 Login
+
+Email + password (Supabase Auth), "forgot password" flow. No signup link. After login, route by role: admin → admin dashboard, site manager → site dashboard.
+
+### 6.2 Admin dashboard
+
+The whole financial position of the business on one screen, without scrolling past the numbers. These eight are the **primary numbers** and appear as cards at the top, each summed across all *active* projects:
+
+| Card                       | Meaning                                                     |
+|----------------------------|-------------------------------------------------------------|
+| **Spent today**            | All expenses dated today, across every project              |
+| **Spent this month**       | All expenses in the current calendar month                  |
+| **Clients have paid**      | Total received across active projects                       |
+| **Clients still owe**      | Total receivable — the sum of every project's balance due   |
+| **Client money with us**   | Client funds received but not yet spent                     |
+| **Our own money in sites** | Sum of `spent_from_own` across all projects                 |
+| **Cash with staff**        | Total float issued and not yet spent, held by site managers |
+| **Still to pay vendors**   | Total unpaid expenses across all projects                   |
+
+Below the cards:
+
+- Active projects list — each row: project name, client, contract value, received, balance due, spent, budget progress bar
+- Alerts panel: milestones overdue, projects above 80% budget, expenses unpaid over 30 days, staff floats running low or negative
+- Quick actions: Add expense · Record client payment · Issue cash · New project
+
+Every card is tappable and opens the list it summarises, already filtered. A period selector (Today / This month / This year / All time / custom range) re-scopes the cards where a period is meaningful.
+
+### 6.3 Site manager dashboard
+
+Deliberately minimal, and built around the one number that matters to him. His **primary numbers**, as cards at the top:
+
+| Card                     | Meaning                                                                                                                                                                       |
+|--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Cash with you**        | The headline figure, largest on the screen: money the admin has given him that he has not yet spent. Negative means the business owes him — label it "Company owes you Rs X". |
+| **You spent today**      | Total of his own entries dated today                                                                                                                                          |
+| **You spent this month** | Total of his own entries this calendar month                                                                                                                                  |
+| **Your projects**        | Count of projects assigned to him                                                                                                                                             |
+
+Then a large **Add Expense** button, today's entries listed with a day total, and links into his assigned projects' expense lists and his own cash ledger (§6.12).
+
+**Cash with you is the only money figure he ever sees.** No contract values, client payments, receivables, margins, company totals, or other users' figures on this screen or any screen he can reach.
+
+### 6.4 Projects list (admin)
+
+Table or cards, filterable by status and type, searchable by project or client name, sortable by balance due.
+
+### 6.5 Project detail (admin)
+
+Opening a project must answer the owner's questions **above the fold, before any tab or scroll**, in plain words and large type. Lay the header out as two rows of cards:
+
+| Row 1 — the money    | Label shown           | Value                                                                             |
+|----------------------|-----------------------|-----------------------------------------------------------------------------------|
+| What the client sent | **Client has paid**   | `total_received`, with contract value beneath it in small type: "of Rs 50,00,000" |
+| What we spent        | **Total spent**       | `total_expenses`                                                                  |
+| Still to collect     | **Client still owes** | `client_balance_due`                                                              |
+| Profit position      | **Margin**            | `project_margin` with percentage                                                  |
+
+| Row 2 — whose money   | Label shown                    | Value                                                                    |
+|-----------------------|--------------------------------|--------------------------------------------------------------------------|
+| Spent from his money  | **Spent from client's money**  | `MIN(total_paid_out, total_received)`                                    |
+| Spent from our pocket | **Spent from our own pocket**  | `MAX(0, total_paid_out - total_received)` — shown in red when above zero |
+| Client money left     | **Client money still with us** | `MAX(0, total_received - total_paid_out)`                                |
+| Unpaid bills          | **Still to pay vendors**       | `outstanding_payables`                                                   |
+
+Row 2 is a specific requirement: at a glance, how much of the spending came out of the client's money and how much came out of the owner's own pocket. Two arithmetic rules hold and should be used as a self-check — **"Spent from client's money" plus "Spent from our own pocket" always equals `total_paid_out`**, and **"Client money still with us" and "Spent from our own pocket" can never both be above zero**. Either the client's money is exhausted and the owner is funding the site, or it is not. If either rule fails, the calculation is wrong.
+
+> **These figures are computed, never tagged.** The "whose money" numbers come entirely from actual cash flow. There is no field on an expense recording whose money it was, and none should be added — a hand-set tag can be wrong, and arithmetic cannot.
+
+On a phone these render as two rows of two cards; on desktop as one eight-card strip. Every figure uses lakh/crore shorthand per §9, and each card is tappable, jumping to the tab that explains it. Then tabs:
+
+- **Overview** — the numbers above plus a spend-by-category donut and a spend-over-time line
+- **Expenses** — filterable table (date range, category, payee, paid/unpaid), running total, group-by toggle (date / category / payee), inline edit, soft delete
+- **Payments received** — list of client payments with running total received
+- **Payment schedule** — milestones with planned vs received and status chips
+- **Activity log** — who changed what and when, from the audit table
+
+### 6.6 Add expense (mobile-first — the most important form)
+
+Designed for a supervisor standing on a dusty site on an Android phone.
+
+- Reachable in two taps from login
+- Large touch targets, minimal typing, numeric keypad for amount
+- Project preselected if the user has only one assignment
+- Date defaults to today with a one-tap "yesterday" shortcut
+- Category as tappable chips of recent/common values, with free text as a fallback
+- Typed data must survive a dropped connection — keep form state and retry, never lose the entry
+- Clear success confirmation, then offer "Add another"
+
+### 6.7 Daily view
+
+A single date with previous / next arrows and a date picker. Shows every expense on that date, grouped by category, with the day total, and a per-project breakdown when viewing all projects. Answers "what was spent today, and on what". Site manager sees the same view scoped to his own projects with no money-in data.
+
+### 6.8 Monthly and yearly views
+
+Month picker with previous / next arrows. Shows: month total, breakdown by project, breakdown by category, breakdown by person who entered it, a bar chart of daily spend across the month, and a comparison against the previous month.
+
+A **year** toggle on the same screen switches the period to a calendar year or the last twelve months: year total, month-by-month bars, and the same breakdowns by project, category and person. The owner should be able to answer "what did we spend in the last year, and on which sites" without exporting anything.
+
+### 6.9 Payables ("Who do I owe")
+
+All unpaid expenses across all projects, grouped by payee, oldest first, with a per-payee total and a one-tap "Mark as paid" that records paid date and method.
+
+### 6.10 Reports and export
+
+- Date-range export to CSV for expenses and for client payments
+- **Client statement PDF** — a clean one-page statement per project: contract value, payments received with dates, total spent (optional, toggle on/off before generating), balance due. Shareable on WhatsApp. This is a frequent real-world need.
+
+### 6.11 Notifications
+
+There is no approval workflow — entries count immediately. Instead the admin is notified as things happen, so he is never surprised by what appeared on a site.
+
+#### Events that trigger a notification (admin only)
+
+- A new expense is added by anyone other than the admin — payee, amount, project, category
+- An expense above a configurable threshold is added (e.g. over Rs 50,000) — flagged as high value
+- A client payment is recorded
+- A site manager's float balance drops below a configurable level, or goes negative
+- An expense is edited or deleted
+- Optional end-of-day digest at a configurable time (default 9:00 PM PKT): total spent today, broken down by project, plus the day's entry count
+
+Each event type has its own on/off toggle in settings, plus quiet hours during which notifications are held and batched until morning.
+
+#### Delivery — mobile push only
+
+Phone notifications through the installed PWA are the **only** channel in this build. Delivered with the Web Push API, using a Supabase Edge Function as the sender and VAPID keys. There is no WhatsApp integration, no SMS and no email alerting — deliberately, since the official WhatsApp Business API carries Meta verification, template approval and per-conversation billing that is not worth the cost here.
+
+Build the sender behind a small channel-agnostic interface anyway, so a second channel can be added later as an adapter without touching the notification logic. Do not build any adapter other than push now.
+
+> **Platform constraint worth knowing before you promise it.** On Android, web push works in Chrome without the app being installed. **On iPhone it only works if the web app has been added to the home screen** (iOS 16.4 and above) — Safari will not deliver push to a normal browser tab, ever. So the first-run experience must actively prompt the admin to install the app to his home screen, and the notification settings screen should detect and warn when push permission or installation is missing rather than silently failing.
+
+#### Site manager notifications
+
+He receives only: cash issued to him by the admin, and a low-float reminder. Nothing about other users, other projects, or any client money.
+
+### 6.12 User detail — "cash with him right now"
+
+From the Users screen or the admin dashboard's Cash with staff panel, tapping a person opens their page. Its purpose is to answer one question immediately: **how much of my cash is in this man's pocket at this moment?**
+
+#### Header
+
+- **Cash with him right now** — the largest figure on the page: `float_issued − float_spent`. This is money handed over that has not yet been spent.
+- Beneath it in small type: total issued all-time · total spent all-time · date and amount of the last issuance
+- If the figure is **negative**, he spent more than he was given, so the business owes him. Show it in red with the label "You owe him Rs X" rather than a minus sign, which is easy to misread.
+- Also show his role, assigned projects, active/inactive status, and last login
+
+#### Cash ledger (the main content)
+
+A single chronological list, newest first, that reads like a passbook — not two separate tables the owner has to reconcile in his head:
+
+- Cash issued to him → **+** amount (no project attached — see §4.7)
+- Each expense he paid from the float → **−** amount, with expense name, project and category
+- Cash returned → **−** amount
+- A **running balance** column on every row, so the owner can see exactly when the float went up and down
+- Filterable by date range and by project; a project filter also shows how much of his float went to each site
+
+#### Actions on this page (admin only)
+
+- **Issue cash** — opens the §4.7 form pre-filled with this user
+- **Record cash returned** — a negative issuance
+- **Adjustment** — for when the physical cash count does not match the app (a forgotten entry, a rounding difference). Requires a mandatory note, is clearly marked as an adjustment in the ledger, and is written to the audit log like everything else. Never let an admin silently overwrite the balance; the correction must be visible as its own row.
+- Assign or unassign projects · Reset password · Deactivate
+
+> **What does not touch the float.** Only expenses marked *Paid via: Site float* draw the balance down. An expense the admin paid himself (*Paid via: Direct*) never affects anyone's float, even if a site manager typed it in. Get this wrong and the balance will drift from the real cash in his pocket within days, which defeats the whole feature.
+
+The site manager sees a read-only version of his own page — header and ledger, no actions, and nothing about any other user.
+
+### 6.13 Admin settings
+
+Users and invitations, role assignment, password resets, deactivation, project assignments (all per §2.1–2.3), category management (rename / merge), vendor merge, edit-window setting, Trash & Restore, audit log viewer.
+
+### 6.14 Search and filtering
+
+These are not a polish item. With dozens of projects and tens of thousands of expense rows, an unsearchable list is a dead list. Build search and filters into every screen that shows more than about ten rows.
+
+#### Global search
+
+- A persistent search box in the top bar, reachable from anywhere
+- Searches across projects (name, client name, address), expenses (name, purpose, category, payee), vendors, and users, with results grouped by type
+- Partial matching from anywhere in the word, not just the start — typing `ment` finds "Cement"
+- Case-insensitive and punctuation-tolerant, so Roman Urdu spelling variations still match (`mistri`, `Mistri`, `mistry` should all find each other via trigram similarity)
+- Debounced at roughly 300 ms; results appear as you type
+- **Search obeys permissions.** A site manager's results are silently restricted to his own assigned projects and his own float — never a "no permission" message that reveals something exists. Implement through the same RLS-backed views as everything else, not by filtering in the browser.
+
+#### Filters on list screens
+
+| Screen              | Filters required                                                                                                                                                                                                         |
+|---------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Expenses            | Date range (presets: Today · Yesterday · This week · This month · Last month · This year · Last 12 months · Custom) · project · category · payee · paid or unpaid · paid via float or direct · entered by · amount range |
+| Projects            | Status (active / on hold / completed / archived) · project type · assigned user · free-text on project or client name · sort by balance due, spend, margin or start date                                                 |
+| Client payments     | Date range · project · method · linked milestone                                                                                                                                                                         |
+| Payables            | Payee · project · age of the unpaid bill · amount range                                                                                                                                                                  |
+| Cash ledger (§6.12) | Date range · project · type (issued / spent / returned / adjustment)                                                                                                                                                     |
+| Users               | Role · active or inactive · assigned project                                                                                                                                                                             |
+| Trash               | Record type · project · who deleted it · deletion date range                                                                                                                                                             |
+
+#### Behaviour rules
+
+- Filters combine — each additional filter narrows the result, never replaces the previous one
+- Active filters show as removable chips above the list, so it is always obvious why rows are missing. A user staring at an empty screen because of a filter he forgot is a common and avoidable support problem.
+- **Totals respect the filters.** If the list is filtered to cement in September on one project, the total shown is that total — not the unfiltered figure. State this plainly to the developer; getting it wrong produces numbers that look authoritative and are wrong.
+- Filter state persists in the URL, so a filtered view can be bookmarked or shared, and survives a page refresh
+- A one-tap Clear all
+- Every filtered list can be exported to CSV exactly as filtered (Phase 2)
+- Server-side filtering and pagination throughout — never fetch every row and filter in the browser
+
+### 6.15 Tooltips and in-app guidance
+
+Several figures in this app are easy to confuse with one another — money received versus money in hand, own money versus client money, float versus spend. Every computed figure must explain itself on the spot, so nobody has to guess or ask.
+
+- A small **?** icon beside every card, column header and calculated total. Tap or hover shows one or two plain sentences.
+- Written in the same basic English as the rest of the app (§9). No accounting vocabulary. Say what the number means and, where useful, how it is worked out.
+- Tooltips are content, not code — keep them in one strings file so wording can be fixed without touching components
+- Form fields whose meaning is not self-evident get helper text permanently under the input, not hidden behind an icon — *Paid via*, *Project type*, and the quantity/rate behaviour
+- Empty states explain the screen rather than showing a blank box: "No expenses yet. Tap Add Expense to record the first one."
+- A short first-run walkthrough on the site manager's dashboard the first time he logs in, three or four steps, skippable and repeatable from the menu
+
+#### Required tooltip copy (use close to verbatim)
+
+| Figure                       | Tooltip                                                                                                                   |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| Client has paid              | Total money this client has sent you for this project so far.                                                             |
+| Client still owes            | The agreed project price minus what the client has paid so far.                                                           |
+| Total spent                  | Everything recorded as an expense on this project, whether you have paid the bill yet or not.                             |
+| Spent from client's money    | How much of your spending was covered by money the client already sent.                                                   |
+| Spent from our own pocket    | How much you have spent beyond what the client has sent. This is your own money sitting in this site right now.           |
+| Client money still with us   | Money the client sent that you have not spent yet.                                                                        |
+| Still to pay vendors         | Bills you have recorded but not yet paid.                                                                                 |
+| Margin                       | The project price minus everything spent on it. On labour-only projects this is your labour charge minus your site costs. |
+| Cash with you (site manager) | Money the company gave you that you have not spent yet. It goes down each time you add an expense paid from this cash.    |
+| Cash with staff (admin)      | Total cash you have given your site staff that they have not spent yet.                                                   |
+| Paid via                     | Who physically handed over the money — the site cash you were given, or the admin paying directly.                        |
+| Budget used                  | How much of the project price has already been spent. Above 100% means the project is running at a loss.                  |
+
+---
+
+## 7. Data safety — no hard deletes, and a second copy
+
+This is a hard requirement, not a nice-to-have. Four layers:
+
+#### Layer 1 — Soft delete everywhere, with a visible Trash
+
+Every table carries `deleted_at timestamptz` and `deleted_by uuid`. "Delete" in the UI sets these fields. No code path issues a SQL `DELETE` on business tables. All default queries and views filter `deleted_at IS NULL`.
+
+Deleted records are not merely retained in the database — they are **visible to the admin as a second set of records** in a dedicated **Trash** screen, so he can always see exactly what has been removed and put it back.
+
+- Trash lists every soft-deleted record across all types — expenses, client payments, projects, milestones, vendors — with tabs or a type filter
+- Each row shows: what it was (name and amount), which project it belonged to, its original date, **who deleted it**, and **when it was deleted**
+- Searchable and filterable by type, project, date range and deleting user
+- **Restore** button on every row returns the record to normal use, recalculating all affected project totals immediately. Restoring a deleted project restores its children with it.
+- Bulk restore for multiple selected rows
+- Nothing auto-expires from Trash. There is no "empty trash" action and no permanent-delete button anywhere in the application.
+- Trash is admin-only. Site managers cannot delete, so they never see it.
+
+Deleting a parent record cascades softly: soft-deleting a project marks its expenses, payments and milestones deleted too, tagged with the same cascade reference so a restore brings back exactly the same set.
+
+#### Layer 2 — Audit log as the mirror copy
+
+A single `audit_log` table, written by Postgres triggers on every INSERT, UPDATE and DELETE across all business tables, storing the complete row as JSONB before and after. Because the whole row is captured on every change, every historical version of every record is recoverable from this one table — this is the duplicate data store. It is **append-only**: no role, including admin, has UPDATE or DELETE rights on it.
+
+#### Layer 3 — Point-in-time recovery (deferred)
+
+The project starts on **Supabase's free tier**, which does not include point-in-time recovery. This is an accepted decision: protection rests on layers 1, 2 and 4, which are all built in the application itself and work on any plan. Upgrading to Pro later enables PITR with no code change, and is worth revisiting once real financial history has accumulated.
+
+> **Two free-tier limits to design around.** (1) Free Supabase projects **pause after a week of inactivity** — harmless here since the app is used daily, but if a quiet period is expected, a scheduled ping keeps it awake. (2) Scheduled functions for the daily export must be checked against free-tier cron availability; if unavailable, run the export from an external free scheduler hitting a secured endpoint.
+
+#### Layer 4 — Off-database daily snapshot
+
+A scheduled Edge Function (daily at 02:00 PKT) exports every table to JSON/CSV into a separate Storage bucket, filename stamped with the date, retained 30 days, and mirrored to Google Drive. With PITR deferred, **this is the primary defence against database-level loss** and should not be treated as optional. Verify the first few exports by hand before trusting it.
+
+---
+
+## 8. Categories
+
+Free text with autocomplete against previously used values, so the vocabulary standardises itself without forcing a rigid list. Seed the autocomplete with the terms actually used on Pakistani residential sites, so the supervisor taps rather than types:
+
+Cement · Sariya (steel) · Bajri (crush) · Reta (sand) · Bricks / Blocks · Block work · Mistri (mason) · Mazdoor (labour) · Dihari (daily wage) · Contractor payment · Advance to labour · Shuttering · Roof slab (chhat) · Plumbing · Sanitary fittings · Electrical wiring · Tiles · Marble · Wood & doors · Paint · Plaster · Glass & aluminium · Grill / iron work · Machinery rent · Transport / freight · Water tanker · Tools · Approval & municipal fees · Site tea & food · Staff salary · Miscellaneous
+
+Admin can rename or merge categories in settings. A merge must rewrite the existing expense rows, not orphan them.
+
+---
+
+## 9. Localisation and formatting
+
+- **Currency:** PKR, prefixed `Rs`. No decimals in display (round to whole rupees).
+- **Digit grouping:** South Asian, i.e. `12,00,000` — not `1,200,000`. Large figures show a shorthand beside them: `Rs 12,00,000 (12 Lakh)`, `Rs 1,20,00,000 (1.2 Crore)`.
+- **Input shorthand:** amount fields should accept `13 lakh`, `13l`, `1.2 crore`, `1200000` and normalise them. This saves a great deal of typing.
+- **Dates:** DD-MMM-YYYY (e.g. 11-Sep-2026). All "today" logic evaluated server-side in Asia/Karachi so a device with the wrong timezone cannot mis-file an entry.
+- **Language:** English throughout, but deliberately **basic** English. The site manager reads simple English and writes Roman Urdu comfortably, so: short labels, everyday words, no accounting vocabulary on his screens — "Cash with you", not "Outstanding float balance"; "Money you spent today", not "Aggregate daily expenditure". Keep Roman-Urdu trade terms in category names as listed in §8, and let free-text fields hold Roman Urdu without any validation complaints.
+- **Phone:** +92 format with validation.
+
+---
+
+## 10. Visual identity and non-functional requirements
+
+### 10.1 Colour palette
+
+The app uses the **same palette as the cohort slide decks**, so everything the business produces looks like it came from the same place. These values are taken directly from those decks and must be used as given.
+
+| Name           | Hex       | Use in the app                                           |
+|----------------|-----------|----------------------------------------------------------|
+| White          | `#FFFFFF` | Page background, card fills. The app is a light theme.   |
+| Navy           | `#17233F` | Headings, primary figures, top bar                       |
+| Deep blue      | `#1B3A8B` | Solid blocks, filled headers, dark panels                |
+| Primary blue   | `#1B75BC` | Buttons, links, active states, accent text on white      |
+| Cyan           | `#1CA0E3` | Highlights, kicker marks, selected chips, progress fills |
+| Charcoal       | `#2B2B2B` | Dark panels                                              |
+| Body text      | `#44444E` | Default text colour                                      |
+| Secondary text | `#6E6E78` | Labels, captions, helper text                            |
+| Faint text     | `#A8A8B2` | Placeholders, disabled states, timestamps                |
+| Card           | `#EEF4FA` | Card and panel backgrounds                               |
+| Card deep      | `#E4EEF8` | Table header rows, alternating rows, hover               |
+| Line           | `#D5E2EF` | Borders, dividers, table rules                           |
+| Green          | `#1AA179` | Positive money states: paid, received, healthy margin    |
+
+#### Two additions needed for this app
+
+The slide decks had no red or amber, but a financial app needs both. Use these, chosen to sit correctly beside the palette above:
+
+| Name  | Hex       | Use                                                                         |
+|-------|-----------|-----------------------------------------------------------------------------|
+| Red   | `#D64545` | Own money deployed, negative float, overdue milestones, destructive actions |
+| Amber | `#E0A32E` | Budget at 80–100%, unpaid bills ageing, low float warnings                  |
+
+> **Colour carries meaning here, so apply it consistently.** Blue is the interface. Green means money that has arrived or been settled. Red means money going out of the owner's own pocket, or something overdue. Amber means approaching a limit. Never use red merely for emphasis or green merely for decoration — in a money app a stray red number will be read as a problem.
+
+### 10.2 Typography
+
+The decks use Cambria, Arial and Calibri, which are presentation fonts and a poor fit on the web. Use **Inter** throughout the app instead — it keeps the same clean corporate feel, has excellent number legibility on small screens, and is free. Use **tabular figures** for all amounts so columns of rupees line up. Amounts should be noticeably larger and heavier than their labels; the number is what people came for.
+
+### 10.3 Non-functional requirements
+
+- Mobile-first throughout; the admin will often check figures on a phone too
+- Installable PWA with a home-screen icon
+- Dashboard usable within ~2 seconds on a 3G connection
+- Clean, restrained visual design — plain numbers, generous spacing, no clutter
+- Search and filter controls must work well on a phone: a filter sheet that slides up, large tap targets, not a desktop toolbar squeezed onto a small screen
+- Session persistence, so the supervisor is not logged out daily
+
+---
+
+## 11. Database schema (Supabase / Postgres)
+
+Give this to Lovable as the schema definition. Every table has `id uuid default gen_random_uuid() primary key`, `created_at`, `created_by`, `updated_at`, `updated_by`, `deleted_at`, `deleted_by` unless stated.
+
+```
+profiles
+  id uuid  (references auth.users)
+  full_name text
+  phone text unique                      -- normalised +92XXXXXXXXXX
+  email text unique                      -- real email, nullable
+  auth_identifier text                   -- real email, or synthetic phone address
+  role text  check (role in ('admin','site_manager'))
+  must_change_password boolean default true
+  temp_password_expires_at timestamptz
+  invited_by uuid, invited_at timestamptz
+  last_login_at timestamptz
+  is_active boolean default true
+
+projects
+  name text not null
+  client_name text, client_phone text
+  address text, plot_size text, covered_area_sqft numeric
+  project_type text check (project_type in ('turnkey','labour_only','cost_plus'))
+  supervision_percent numeric            -- cost_plus only
+  contract_value numeric not null default 0
+  start_date date, expected_completion date
+  status text check (status in ('active','on_hold','completed','archived'))
+  notes text
+
+project_assignments
+  project_id uuid -> projects
+  user_id uuid -> profiles
+  unique (project_id, user_id)
+
+payment_milestones
+  project_id uuid -> projects
+  name text, sequence int
+  planned_amount numeric, planned_date date
+  on_stage_completion boolean default false
+
+client_payments
+  project_id uuid -> projects
+  milestone_id uuid -> payment_milestones  (nullable)
+  payment_date date not null
+  amount numeric not null check (amount > 0)
+  method text check (method in ('cash','bank_transfer','cheque','easypaisa','jazzcash','other'))
+  reference_no text, received_by text, note text
+
+expenses
+  project_id uuid -> projects
+  expense_name text not null
+  quantity numeric, unit text, rate numeric   -- optional; amount = quantity * rate
+  amount numeric not null check (amount > 0)
+  expense_date date not null
+  category text not null
+  purpose text
+  vendor_id uuid -> vendors  (nullable)
+  payment_status text check (payment_status in ('paid','unpaid')) default 'paid'
+  paid_date date, paid_method text
+  paid_via text check (paid_via in ('site_float','direct')) default 'direct'
+
+cash_issuances
+  recipient_id uuid -> profiles          -- who received the cash
+  -- NO project_id: a float belongs to a person, not a project (§4.7)
+  issue_date date not null
+  amount numeric not null                -- negative = cash returned
+  method text, note text
+
+notification_settings
+  user_id uuid -> profiles
+  channel text check (channel in ('push'))   -- extensible later
+  event_type text, is_enabled boolean default true
+  high_value_threshold numeric default 50000
+  quiet_hours_start time, quiet_hours_end time
+  digest_time time default '21:00'
+
+push_subscriptions
+  user_id uuid -> profiles
+  endpoint text, p256dh text, auth text, device_label text
+
+notification_log                           -- what was sent, for debugging and cost tracking
+  user_id uuid, channel text, event_type text
+  payload jsonb, status text, sent_at timestamptz
+
+expense_categories
+  name text unique
+  is_seeded boolean default false
+
+vendors
+  name text, normalised_name text unique
+  phone text, notes text
+
+contract_revisions
+  project_id uuid -> projects
+  old_value numeric, new_value numeric
+  reason text, changed_by uuid, changed_at timestamptz
+
+-- soft-delete cascade grouping: when a parent is deleted, stamp the same
+-- uuid on every child row so a restore returns exactly the same set
+-- add to all business tables:  delete_batch_id uuid
+
+audit_log                                  -- append-only, no soft-delete columns
+  table_name text, record_id uuid
+  action text check (action in ('INSERT','UPDATE','DELETE'))
+  old_row jsonb, new_row jsonb
+  changed_by uuid, changed_at timestamptz default now()
+```
+**Indexes:** `expenses(project_id, expense_date)`, `expenses(expense_date)`, `expenses(payment_status)`, `client_payments(project_id, payment_date)`, `audit_log(table_name, record_id)`.
+
+---
+
+## 12. Row Level Security
+
+RLS must be enabled on every table. Enforce access in the database, not only in the UI — a hidden field in the frontend is not security.
+
+| Table                                     | Admin                                           | Site manager                                                                                                                                  |
+|-------------------------------------------|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| projects                                  | Full                                            | **No direct access.** Reads through a restricted view (see below).                                                                            |
+| expenses                                  | Full                                            | SELECT where project is assigned to them. INSERT for assigned projects. UPDATE only rows they created, within the edit window. **No DELETE.** |
+| client_payments                           | Full                                            | No access at all.                                                                                                                             |
+| payment_milestones                        | Full                                            | No access at all.                                                                                                                             |
+| contract_revisions                        | Full                                            | No access at all.                                                                                                                             |
+| cash_issuances                            | Full — only an admin may create, edit or delete | SELECT rows where they are the recipient, so they can see their own float. No INSERT, UPDATE or DELETE.                                       |
+| notification_settings, push_subscriptions | Full                                            | Own rows only.                                                                                                                                |
+| vendors, expense_categories               | Full                                            | SELECT and INSERT. No UPDATE or DELETE.                                                                                                       |
+| profiles                                  | Full                                            | SELECT own row only.                                                                                                                          |
+| audit_log                                 | SELECT only                                     | No access.                                                                                                                                    |
+
+> **Critical implementation note.** Postgres RLS is row-level, not column-level, so a site manager granted any SELECT on `projects` would be able to read `contract_value` through the API even if the UI hides it. Solve this with a dedicated view — `projects_for_site` exposing only `id, name, address, status` — grant the site manager role access to that view and nothing on the base table. The same applies to any aggregate function or RPC: none that a site manager can call may return contract value, payments, or margin.
+
+**Do not use the Supabase service-role key in frontend code under any circumstances.** It bypasses RLS entirely. It belongs only in Edge Functions.
+
+---
+
+## 13. Build phases
+
+| Phase              | Scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Phase 1** — Core | Auth and the two roles with RLS, including the phone-or-email login mapping, admin user invitation with generated temporary passwords, forced password change on first login, and project assignment (§2.1–2.3). Projects CRUD with the three types. Expenses CRUD, mobile-first add form. Client payments. All the §5 calculations. Admin and site dashboards with the full set of primary numbers (§6.2, §6.3). Daily and monthly views. Search and filtering on the expenses and projects lists (§6.14), and tooltips on every figure built in §5 (§6.15) — write these as the screens are built, not as a later pass. Soft delete plus audit-log triggers from day one — retrofitting these later is painful. |
+| **Phase 2**        | Cash issuance and site float (§4.7) with the site manager's balance, the admin's Cash with staff panel, and the per-user cash ledger page (§6.12). Own-money-deployed figures. Quantity / unit / rate on expenses. Payment milestones and schedule tracking. Payables view. Contract revisions. CSV export.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **Phase 3**        | Trash and restore screen (§7). Project archive / unarchive and the buried delete path (§4.8). Charts (category donut, monthly bar, spend-over-time). Client statement PDF. PWA install. Category and vendor management.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Phase 4**        | Notifications (§6.11): web push, then the end-of-day digest. Daily backup Edge Function. Alerts panel, month-over-month comparison.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+
+---
+
+## 14. Starter prompt for Lovable
+
+Paste this as the first message, then attach this document and build phase by phase. Do not attempt to generate the entire application in a single prompt — Lovable produces far better results when each phase is built and tested in turn.
+
+```
+Build a mobile-first web application called "Site Ledger" for a residential
+construction contracting business in Pakistan. Stack: React + Tailwind with
+Supabase for auth, database and storage. Currency is PKR, displayed with South
+Asian digit grouping (12,00,000) and a lakh/crore shorthand beside large numbers.
+Dates are DD-MMM-YYYY, timezone Asia/Karachi.
+
+There are two roles: an admin/owner who sees everything, and a site manager who
+can only add expenses to projects assigned to him and can never see contract
+values, client payments, receivables or profit. Enforce this with Supabase Row
+Level Security, and give site managers access only to a restricted view of the
+projects table that excludes contract_value. No hard deletes anywhere: every
+table has deleted_at and deleted_by, and Postgres triggers write every insert,
+update and delete into an append-only audit_log table storing the full row as
+JSONB before and after.
+
+Expenses have optional quantity, unit and rate fields, with amount auto-calculated
+as quantity x rate but always overridable. Each expense records two independent
+thing: paid_via (site float or direct). Never ask anyone to tag whether money came
+from the client or from us - that is calculated from money in versus money out.
+Admins issue cash to site managers, and expenses paid via site float draw that
+balance down, so a site manager sees only "Cash with you" and never any client
+money. Use basic, everyday English on the site manager's screens.
+
+Start with Phase 1 only: login by phone number or email plus password, an admin
+user-management screen where the admin adds users by phone or email and the app
+generates a temporary password shown once with copy and WhatsApp-share buttons,
+a forced password-change screen on first login, project assignment linking users
+to projects, a projects table (types: turnkey fixed price, labour only, cost
+plus), an expenses table, a client_payments table, a mobile-first Add Expense
+form, an admin dashboard showing today's spend, this month's spend, total
+receivable and cash in hand, and per project: contract value, total received,
+balance due, total spent and margin. Clean, restrained design — plain readable
+numbers, generous spacing, no clutter.
+
+For phone login, do not use Supabase SMS OTP. Keep email/password auth and map
+each phone number to a synthetic internal address (923001234567@users.app),
+storing the real number in profiles.phone. The login form accepts either and
+swaps in the synthetic address when the input looks like a phone number.
+
+Do not build the payment schedule, charts or exports yet. There are no file or
+image uploads anywhere in this application.
+```
+---
+
+## 15. Confirmed decisions
+
+These two points were raised and have been settled by the owner. Build to them.
+
+#### Salaries are project expenses
+
+Staff salaries are charged to the project they relate to, as ordinary expenses under the **Staff salary** category. There is no separate company-overhead ledger and no cost-allocation logic in v1. When one person's salary spans two sites, the owner splits the amount manually across two expense entries. Build nothing special for this.
+
+#### The project is the unit of account — there is no client record
+
+Client name and phone stay as plain fields on the project. **Do not build a clients table**, client pages, or any cross-project client totals. If one person has two houses running, they are two independent projects with separate contract values, payments and balances, and the app makes no attempt to link them. Every figure in §5 is scoped to a single project.
+
+Should repeat clients become common later, this is the change to make: promote client to its own table, migrate the existing name fields into records, and add a client view summing lifetime paid and total outstanding across their projects. Nothing in the current schema blocks that.
+
+#### Advances to labour are plain expenses
+
+An advance paid to a mistri or contractor is recorded as a normal expense on the date the money leaves, under **Advance to labour**. There is no drawdown ledger and no linking of an advance to a later settlement.
+
+> **Consequence to guard against — double counting.** Because advances are plain expenses, when the contractor is finally settled the user must record *only the remaining balance*, not the full contract amount, or the site will appear to have spent the advance twice. Mitigate in the UI: when a user adds an expense with a payee who has earlier entries in the **Advance to labour** category on the same project, show a non-blocking hint listing those advances and their total — "Rs 1,50,000 in advances already recorded for this payee". Do not block the save; the user decides.
+
+---
+
+## 16. Remaining open questions
+
+1.  **Multiple site managers per project**, and whether one manager should see the entries of another on the same site.
+2.  **Tax and withholding** — not handled in v1. Confirm that is acceptable.
+3.  **Partner or investor splits** on a project — out of scope for v1.
